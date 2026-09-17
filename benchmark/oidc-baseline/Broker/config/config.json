@@ -1,0 +1,20 @@
+{
+    "Issuer": "http://localhost:14931",
+    "DockerIssuer": "http://broker:14931",
+    "Port": "14931",
+    "IdPConfig": {
+        "BrowserReachURL": "http://localhost:14930",
+        "ServerReachURL": "http://idp:14930",
+        "OIDCConfig": {
+            "AuthorizePath": "/oauth2/authorize",
+            "TokenPath": "/oauth2/token",
+            "UserInfoPath": "/oauth2/userinfo",
+            "JWKSPath": "/oauth2/.well-known/jwks.json",
+            "RegisterPath": "/oauth2/register"
+        }
+    },
+    "RPConfig": {
+        "BrowserReachURL": "http://localhost:14932",
+        "ServerReachURL": "http://rp:14932"
+    }
+}

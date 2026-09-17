@@ -1,0 +1,15 @@
+.git
+.env
+.env.local
+data
+dist
+tmp
+test-results
+benchmark/e2e/node_modules
+tca/node_modules
+**/config/key_storage.json
+**/config/registration_data.json
+IdP/config/Register_user.json
+*.log
+*.pdf
+.DS_Store

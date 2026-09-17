@@ -1,0 +1,147 @@
+# NDSS AE deployment from one prebuilt, self-contained OrionLink image.
+# This canonical Compose file intentionally has no `build:` entries and no
+# source-code mounts. The optional E3 load generator only bind-mounts its
+# results directory.
+#
+# Local image:
+#   ORION_IMAGE=orionlink-ae:ndss2027-v2 docker compose up -d --wait
+# Published image:
+#   ORION_IMAGE=walnutd/orionlink-ae:ndss2027-v2 docker compose up -d --wait
+# Add 20 ms to every container's egress path (about 40 ms added RTT between containers):
+#   ORION_NETEM_DELAY=20ms docker compose up -d --wait
+
+name: orionlink-ae
+
+x-orion-env: &orion-env
+  ORION_PROFILE: ${ORION_PROFILE:-demo}
+  ORION_IDP_URL: ${ORION_IDP_URL:-http://localhost:3000}
+  ORION_BROKER_URL: ${ORION_BROKER_URL:-http://localhost:3001}
+  ORION_RP_URL: ${ORION_RP_URL:-http://localhost:3002}
+  ORION_TCA_URL: ${ORION_TCA_URL:-http://localhost:3003}
+  ORION_IDP_SERVER_URL: ${ORION_IDP_SERVER_URL:-http://idp:3000}
+  ORION_BROKER_SERVER_URL: ${ORION_BROKER_SERVER_URL:-http://broker:3001}
+  ORION_RP_SERVER_URL: ${ORION_RP_SERVER_URL:-http://rp:3002}
+  # Container listen ports stay fixed even when an evaluator remaps a
+  # published host port and changes the corresponding browser-facing URL.
+  ORION_IDP_LISTEN: :3000
+  ORION_BROKER_LISTEN: :3001
+  ORION_RP_LISTEN: :3002
+  ORION_DATA_DIR: /data
+  # Delay every packet leaving eth0. For communication between two shaped
+  # containers, the added network RTT is approximately twice this value.
+  ORION_NETEM_DELAY: ${ORION_NETEM_DELAY:-}
+  ORION_NETEM_JITTER: ${ORION_NETEM_JITTER:-}
+  ORION_NETEM_IFACE: ${ORION_NETEM_IFACE:-eth0}
+
+x-common: &common
+  image: ${ORION_IMAGE:-orionlink-ae:ndss2027-v2}
+  pull_policy: ${ORION_PULL_POLICY:-missing}
+  init: true
+  cap_add:
+    - NET_ADMIN
+  environment:
+    <<: *orion-env
+
+x-backend: &backend
+  <<: *common
+  volumes:
+    - orion-data:/data
+  restart: on-failure
+
+services:
+  tca:
+    <<: *common
+    command: ["tca"]
+    ports:
+      - "${ORION_TCA_PORT:-3003}:3003"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3003/dvf.html >/dev/null && wget -qO- http://127.0.0.1:3003/orion-config.js >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+
+  idp:
+    <<: *backend
+    command: ["idp"]
+    ports:
+      - "${ORION_IDP_PORT:-3000}:3000"
+    depends_on:
+      tca:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/ssso/pubkeys"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 5s
+
+  broker:
+    <<: *backend
+    command: ["broker"]
+    ports:
+      - "${ORION_BROKER_PORT:-3001}:3001"
+    depends_on:
+      idp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3001/ssso/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+
+  rp:
+    <<: *backend
+    command: ["rp"]
+    ports:
+      - "${ORION_RP_PORT:-3002}:3002"
+    depends_on:
+      broker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3002/ssso/login"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+
+  # Optional, short-lived E3 load generator. It uses the same submitted image,
+  # but is excluded from a normal `up` so the deployment still consists of the
+  # four protocol roles. It deliberately has no NET_ADMIN capability and does
+  # not inherit ORION_NETEM_DELAY. For baseline E3, also start the four server
+  # containers with ORION_NETEM_DELAY empty; any delay already applied to their
+  # egress paths will still appear in the load generator's measurements.
+  e3:
+    image: ${ORION_IMAGE:-orionlink-ae:ndss2027-v2}
+    pull_policy: ${ORION_PULL_POLICY:-missing}
+    init: true
+    profiles: ["benchmark"]
+    entrypoint: ["/app/benchmark/run-e3.sh"]
+    working_dir: /app
+    environment:
+      ORION_PROFILE: ${ORION_PROFILE:-bench}
+      ORION_IDP_URL: ${ORION_E3_IDP_URL:-http://idp:3000}
+      ORION_BROKER_URL: ${ORION_E3_BROKER_URL:-http://broker:3001}
+      ORION_RP_URL: ${ORION_E3_RP_URL:-http://rp:3002}
+      ORION_E3_OUT_DIR: /results
+      ORION_E3_RPS: ${ORION_E3_RPS:-}
+      ORION_E3_DURATION: ${ORION_E3_DURATION:-}
+      ORION_E3_WARMUP: ${ORION_E3_WARMUP:-}
+      ORION_E3_COOLDOWN: ${ORION_E3_COOLDOWN:-}
+      ORION_E3_FIXTURES: ${ORION_E3_FIXTURES:-}
+      ORION_E3_ASSUMED_MS: ${ORION_E3_ASSUMED_MS:-}
+      ORION_E3_MAX_WAIT_S: ${ORION_E3_MAX_WAIT_S:-}
+      ORION_E3_VU_CAP: ${ORION_E3_VU_CAP:-}
+    volumes:
+      - ./benchmark/results:/results
+    depends_on:
+      idp:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      rp:
+        condition: service_healthy
+
+volumes:
+  orion-data:

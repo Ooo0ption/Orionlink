@@ -1,0 +1,100 @@
+{
+  "clients": [
+    {
+      "client_id": "UXZMMiRBOo3Uuj8XW7kwxw==",
+      "client_secret": "vTffWTNC3cu0e1UAW7ksvcxIIrLpch5mx9K5OYSisF0=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "OIDC Relying Party"
+    },
+    {
+      "client_id": "YpOhf9PJYn4bVkUZy30ZiA==",
+      "client_secret": "91N0hP0SLrYlPnIZ-9CVjiw2XhKM1w0OX2pAxsb9IUM=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "Ba6Gp7RWgWuguLvvLjYSYw==",
+      "client_secret": "o-SEhLIAv0zVsD0M_xcQy-sFSImzGJaCAMcXgCiElWg=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "4Zia_YaK2RgFwTxLzOjHhQ==",
+      "client_secret": "vJxX6TA3TMKcZwXGF3aq5rwtRdcNewm4rkZ-CExWnxs=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "gp6WvIyHsVpSO3dgBYuoMA==",
+      "client_secret": "CwbtzIncVT-ZRcTkGZ2yrtkTAGo7_CjlFKgZ9hPW7iI=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "twQ8LBsuRS0K2G_JMovaQQ==",
+      "client_secret": "fy5T_ZX6-UsGH-v1PmLcKVpcH5PdQmj3Vv9QKM42CPQ=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "XrRxtLldkf7e9dJbJn46WQ==",
+      "client_secret": "CEbVW2amRpkF8QyJ8l3HJ_x2Wo7CdazuN2iB1B0ifjc=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "0PbO496FxEVZ8gJRoUWmxg==",
+      "client_secret": "6P1hICWUJOD8WdFA8BX7S7VDIMkFBUgCAfDvpbEmEfk=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "OIDC Relying Party"
+    },
+    {
+      "client_id": "EeJeTxKWRmlex5aLIezTsA==",
+      "client_secret": "TmkwsR2twldfrFhwZ8Q8E73F78ybM0lav8OYuHsPZCU=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "guN4giqsVv8EMYRd2wQW-w==",
+      "client_secret": "C0L8pI4HjT8VA57a1B6_GOygg83Cs3jdGSNzOKd7ZeE=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "wEveXgs13eUhUOem3KWCRw==",
+      "client_secret": "Nb1eS8xRYs-xD0Psid7D6fLEP-QoTxl9sDWtDjB8j1s=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    },
+    {
+      "client_id": "WVi1feYqG0D27-5iVj1-vg==",
+      "client_secret": "YXrxE6nmAQjxL5tPNszUkoiJ6pg0YRQJlxzFEvYxal0=",
+      "redirect_uris": [
+        "http://localhost:14932/oauth2/callback"
+      ],
+      "name": "Benchmark Test Client"
+    }
+  ]
+}

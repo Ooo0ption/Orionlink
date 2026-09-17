@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign in · Brokered OIDC IdP</title>
+    <style>
+        :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b;
+            --line:#e2e8f0; --brand:#10b981; --brand-soft:#ecfdf5; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0b1020; --card:#121a2e; --ink:#e6ebf5; --muted:#93a1b8;
+                --line:#24304a; --brand:#34d399; --brand-soft:#10231a; }
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); line-height:1.5;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+        .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+            border-bottom:1px solid var(--line); background:var(--card); font-weight:800; }
+        .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+            box-shadow:0 0 0 4px var(--brand-soft); }
+        .topbar small { color:var(--muted); font-weight:600; }
+        .page { max-width:430px; margin:0 auto; padding:46px 20px 60px; }
+        .card { padding:30px 28px; background:var(--card); border:1px solid var(--line);
+            border-radius:16px; box-shadow:0 1px 2px rgba(2,6,23,.04); }
+        .header { text-align:center; margin-bottom:22px; }
+        h1 { margin:0 0 4px; font-size:21px; }
+        .sub { margin:0; color:var(--muted); font-size:14px; }
+        .form-group { margin-bottom:14px; }
+        label { display:block; margin-bottom:5px; font-size:12.5px; font-weight:700; }
+        input[type="text"], input[type="password"] { width:100%; padding:11px 12px; color:var(--ink);
+            background:var(--bg); border:1px solid var(--line); border-radius:10px; font-size:14px; }
+        input:focus { outline:2px solid var(--brand); outline-offset:1px; }
+        button { width:100%; padding:12px 18px; color:#fff; background:var(--brand);
+            border:0; border-radius:10px; cursor:pointer; font-size:14px; font-weight:700; }
+        .hint { margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
+            text-align:center; color:var(--muted); font-size:13px; }
+        .mono { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+    </style>
+</head>
+<body>
+    <div class="topbar"><span class="dot"></span>Brokered OIDC <small>· Identity Provider</small></div>
+    <main class="page">
+      <section class="card">
+        <div class="header">
+            <h1>Sign in</h1>
+            <p class="sub">Continuing with the benchmark identity.</p>
+        </div>
+        <form method="post" action="/oauth2/login">
+            <input type="hidden" name="client_id" value="{{.ClientID}}">
+            <input type="hidden" name="redirect_uri" value="{{.RedirectURI}}">
+            <input type="hidden" name="response_type" value="{{.ResponseType}}">
+            <input type="hidden" name="scope" value="{{.Scope}}">
+            <input type="hidden" name="state" value="{{.State}}">
+            <input type="hidden" name="startTime" value="{{.StartTime}}">
+            <input type="hidden" name="prompt" value="{{.Prompt}}">
+            
+            <div class="form-group">
+                <label>Username:</label>
+                <input type="text" name="username" required value="Alice">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" name="password" required value="Alice-pass">
+            </div>
+            <!-- 保留按钮但默认隐藏：用于手动调试；自动化测试不需要点击 -->
+            <div class="form-group" style="display:none">
+                <button type="submit">Login</button>
+            </div>
+        </form>
+        <div class="hint">
+            Demo account: <strong>Alice</strong> / <span class="mono">Alice-pass</span>
+        </div>
+      </section>
+    </main>
+    <script>
+        // For E2E latency testing:
+        // - render this page (so navigation/render time can be measured)
+        // - auto-submit form without user click
+        const form = document.querySelector("form");
+
+        function appendHidden(name, value) {
+            const el = document.createElement("input");
+            el.type = "hidden";
+            el.name = name;
+            el.value = String(value);
+            form?.appendChild(el);
+        }
+
+        // approximate "first render" timestamp: after 2 RAFs (allow layout+paint)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                appendHidden("t_idp_render", Date.now());
+
+                // submit timestamp right before submit
+                appendHidden("t_idp_submit", Date.now());
+                form?.submit();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>TCA — Trusted Computation Agent</title>
+    <!-- Deployment addresses, rendered per container. Not SRI-pinned, since its
+         contents vary by deployment; it carries public routing information only.
+         Runs before the bundle, which reads window.ORION at evaluation time. -->
+    <script src="./orion-config.js" defer></script>
+    <!-- The page's one script: SRI-pinned and built by tca/build-app.sh from
+         dvf.js, cryptolib.js and the vendored dependencies. Regenerate the hash
+         after editing any of them (tca/SRI.md). -->
+    <script type="module" src="./dvf.bundle.js"
+            integrity="sha384-uhZQvkBayAsFqFCyZAJNtrGf0omueuMrwwMePghGEfCA2hIrzgzx4Fr35Bb3A51u"
+            crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --bg: #ffffff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+            --brand: #4f46e5; --brand-soft: #eef2ff; --ok: #16a34a; --ok-soft: #f0fdf4;
+            --warn-bg: #fffbeb; --warn-text: #b45309; --code: #7c3aed;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0f172a; --text:#e6ebf5; --muted:#93a1b8; --border:#24304a;
+                --brand:#8b93ff; --brand-soft:#1a2136; --ok:#4ade80; --ok-soft:#10231a;
+                --warn-bg:#241c07; --warn-text:#fbbf24; --code:#c4b5fd; }
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--text); background: var(--bg); line-height: 1.5; }
+        .head { display: flex; align-items: center; gap: 8px; }
+        .badge { font-size: 11px; font-weight: 700; color: var(--brand);
+            background: var(--brand-soft); padding: 2px 9px; border-radius: 999px; }
+        h2 { margin: 0; font-size: 15px; font-weight: 800; }
+        .sub { margin: 4px 0 14px; color: var(--muted); font-size: 12px; }
+        .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+        /* The app being authorized. */
+        .who { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+        .who .wl { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--muted); }
+        /* Addressed by id, not class: setv() overwrites className wholesale. */
+        #v_D { display: block; margin-top: 2px; font-size: 15px; font-weight: 700; text-align: left;
+            word-break: break-all; }
+        #v_D.pend { color: var(--muted); font-weight: 400; font-size: 13px; }
+        #PSVerifyResult { display: block; margin-top: 8px; font-size: 12.5px; font-weight: 700;
+            text-align: left; font-family: inherit; }
+        #PSVerifyResult.ok { color: var(--ok); }
+        .who .pseudo { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);
+            font-size: 11.5px; color: var(--muted); }
+        #v_acid { display: inline; text-align: left; font-size: 11.5px; }
+
+        /* PIN prompt */
+        .prompt { margin-top: 14px; }
+        .prompt label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 5px; }
+        .field { display: flex; gap: 8px; align-items: center; }
+        input[type="password"] { flex: 1; padding: 10px 11px; font-size: 14px; border: 1px solid var(--border);
+            border-radius: 9px; background: var(--bg); color: var(--text); }
+        button { padding: 10px 18px; border: 0; border-radius: 9px; background: var(--brand);
+            color: #fff; cursor: pointer; font-weight: 700; font-size: 14px; }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        #notice_message:not(:empty) { display: block; margin-top: 8px; padding: 7px 10px;
+            background: var(--warn-bg); color: var(--warn-text); border: 1px solid #f59e0b;
+            border-radius: 8px; font-size: 12.5px; }
+
+        /* Protocol evidence, folded away by default. */
+        details.detail { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+        details.detail > summary { cursor: pointer; font-size: 12px; font-weight: 700; color: var(--muted); }
+        .stage { margin-top: 10px; }
+        .stage-h { font-weight: 700; font-size: 12px; margin-bottom: 6px; }
+        .stage-h .mono { color: var(--code); font-weight: 600; }
+        .var { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0;
+            border-bottom: 1px dashed var(--border); font-size: 12.5px; }
+        .var:last-child { border-bottom: 0; }
+        .vn { color: var(--muted); white-space: nowrap; }
+        .vn b { color: var(--code); font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; }
+        .vv { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 600;
+            text-align: right; word-break: break-all; }
+        .vv.ok { color: var(--ok); }
+        .vv.pend { color: var(--muted); font-family: inherit; font-weight: 400; }
+        #log { display: none; }
+    </style>
+</head>
+
+<body>
+    <div class="head"><span class="badge">TCA</span><h2>Confirm the application</h2></div>
+    <p class="sub">This frame runs on its own origin — the IdP cannot read your PIN or anything else in it.</p>
+
+    <!-- Who is being authorized. v_D is the RP domain, verified in this frame. -->
+    <div class="who">
+        <div class="wl">You are signing in to</div>
+        <div class="vv pend" id="v_D">checking…</div>
+        <div class="vv pend" id="PSVerifyResult">—</div>
+        <div class="pseudo">Session pseudonym <span class="vv pend" id="v_acid">waiting…</span></div>
+    </div>
+
+    <!-- Granting the request. -->
+    <div class="prompt">
+        <label for="pin_input">Enter your PIN to authorize</label>
+        <div class="field">
+            <input name="pin" id="pin_input" type="password" placeholder="PIN" />
+            <button id="submit_pin_btn" disabled>Authorize</button>
+        </div>
+        <span id="notice_message"></span>
+    </div>
+
+    <details class="detail">
+        <summary>Protocol detail</summary>
+        <div class="stage">
+            <div class="stage-h">1 · Verify the RP’s identity — <span class="mono">AC.VerifyCred(ivk, D, acid)</span></div>
+            <div class="var"><span class="vn">checked above</span><span class="vv pend">acid commits to D</span></div>
+        </div>
+        <div class="stage">
+            <div class="stage-h">2 · Derive the management key from your PIN — <span class="mono">PIN-OPRF</span></div>
+            <div class="var"><span class="vn"><b>α</b> = Blind(PIN)</span><span class="vv pend" id="v_alpha">—</span></div>
+            <div class="var"><span class="vn"><b>β</b> = BlindEval(k, α)</span><span class="vv pend" id="v_beta">—</span></div>
+            <div class="var"><span class="vn"><b>K_m</b> = KDF(Unblind(r, β))</span><span class="vv pend" id="v_km">—</span></div>
+            <div class="var"><span class="vn"><b>D_enc</b> = Enc<sub>K_m</sub>(D)</span><span class="vv pend" id="v_denc">—</span></div>
+        </div>
+    </details>
+
+    <pre id="log"></pre>
+</body>
+
+</html>

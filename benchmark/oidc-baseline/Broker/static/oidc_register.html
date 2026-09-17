@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Register · Brokered OIDC Broker</title>
+    <style>
+        :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b;
+            --line:#e2e8f0; --brand:#f59e0b; --brand-soft:#fffbeb;
+            --bad:#dc2626; --bad-soft:#fef2f2; --code:#0b1020; --code-ink:#d7e0ff; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0b1020; --card:#121a2e; --ink:#e6ebf5; --muted:#93a1b8;
+                --line:#24304a; --brand:#fbbf24; --brand-soft:#241c07;
+                --bad:#f87171; --bad-soft:#2a1414; --code:#060912; --code-ink:#cfe0ff; }
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); line-height:1.5;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+        .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+            border-bottom:1px solid var(--line); background:var(--card); font-weight:800; }
+        .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+            box-shadow:0 0 0 4px var(--brand-soft); }
+        .topbar small { color:var(--muted); font-weight:600; }
+        .page { max-width:650px; margin:0 auto; padding:28px 20px 60px; }
+        .card { padding:24px; background:var(--card); border:1px solid var(--line);
+            border-radius:16px; box-shadow:0 1px 2px rgba(2,6,23,.04); }
+        .header { margin-bottom:22px; }
+        h1 { margin:0 0 4px; font-size:22px; }
+        h3 { margin:0 0 12px; font-size:18px; }
+        .header p, small { color:var(--muted); }
+        .header p { margin:0; font-size:14px; }
+        .form-group { margin-bottom:16px; }
+        .form-actions { display:flex; gap:10px; margin-bottom:0; }
+        label { display:block; margin-bottom:5px; font-size:12.5px; font-weight:700; }
+        input[type="text"], input[type="url"] { width:100%; padding:11px 12px; color:var(--ink);
+            background:var(--bg); border:1px solid var(--line); border-radius:10px; font-size:14px; }
+        input:focus { outline:2px solid var(--brand); outline-offset:1px; }
+        button { padding:10px 17px; color:#fff; background:var(--brand); border:0;
+            border-radius:10px; cursor:pointer; font-size:14px; font-weight:700; }
+        .back-btn { color:var(--brand); background:transparent; border:1px solid var(--brand); }
+        .status { display:none; margin:16px 0; padding:11px 13px; border-radius:10px; font-size:13px; }
+        .error { color:var(--bad); background:var(--bad-soft); border:1px solid var(--bad); }
+        #credentials-display { padding-top:4px; }
+        .credentials { padding:12px 14px; color:var(--code-ink); background:var(--code);
+            border-radius:10px; font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+            font-size:11.5px; word-break:break-all; }
+        .credentials p { margin:7px 0; }
+    </style>
+</head>
+<body>
+    <div class="topbar"><span class="dot"></span>Brokered OIDC <small>· Identity Broker</small></div>
+    <main class="page">
+      <section class="card">
+        <div class="header">
+            <h1>Broker Client Registration</h1>
+            <p>Register this broker with the Identity Provider</p>
+        </div>
+        
+        <div id="registration-form">
+            <form id="clientForm">
+                <div class="form-group">
+                    <label>Client Name:</label>
+                    <input type="text" id="clientName" value="OIDC Broker Service" required>
+                </div>
+                <div class="form-group">
+                    <label>Redirect URI:</label>
+                    <input type="url" id="redirectUri" value="http://localhost:14931/oauth2/callback" required>
+                </div>
+                <div class="form-group form-actions">
+                    <button type="submit">Register with IdP</button>
+                    <button type="button" class="back-btn" onclick="goBack()">Back</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="status-message" class="status"></div>
+
+        <div id="credentials-display" style="display: none;">
+            <h3>Registration Successful!</h3>
+            <div class="credentials">
+                <p><strong>Client ID:</strong> <span id="clientId"></span></p>
+                <p><strong>Client Secret:</strong> <span id="clientSecret"></span></p>
+                <p><strong>Created At:</strong> <span id="createdAt"></span></p>
+            </div>
+            <p><small>Please save these credentials safely. The client secret will not be shown again.</small></p>
+            <button onclick="useCredentials()">Use These Credentials</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+        document.getElementById('clientForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const clientName = document.getElementById('clientName').value;
+            const redirectUri = document.getElementById('redirectUri').value;
+            
+            try {
+                const response = await fetch('/oauth2/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        client_name: clientName,
+                        redirect_uris: [redirectUri],
+                        client_type: 'broker'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess(data);
+                } else {
+                    showError(data.error_description || data.error || 'Registration failed');
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            }
+        });
+        
+        function showSuccess(data) {
+            document.getElementById('registration-form').style.display = 'none';
+            document.getElementById('clientId').textContent = data.client_id;
+            document.getElementById('clientSecret').textContent = data.client_secret;
+            document.getElementById('createdAt').textContent = data.created_at;
+            document.getElementById('credentials-display').style.display = 'block';
+        }
+        
+        function showError(message) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = 'status error';
+            statusDiv.textContent = 'Error: ' + message;
+            statusDiv.style.display = 'block';
+        }
+        
+        function useCredentials() {
+            // 这里可以实现将凭据保存到配置中的逻辑
+            alert('Credentials saved! You can now use the OIDC service.');
+            goBack();
+        }
+        
+        function goBack() {
+            window.history.back();
+        }
+    </script>
+</body>
+</html>

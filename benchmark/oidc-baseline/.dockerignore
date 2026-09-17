@@ -1,0 +1,16 @@
+.git
+.gitignore
+.DS_Store
+
+dist/
+results/
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+
+RP/latency_results.txt
+RP/register_latency_test.txt
+
+*.log
+*.test
+coverage.out

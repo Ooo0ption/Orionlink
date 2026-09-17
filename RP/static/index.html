@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OrionLink · Demo</title>
+  <link rel="stylesheet" href="/static/orion.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> OrionLink <small>· Relying Party (App)</small></div>
+    <div class="nav">
+      <a href="/ssso/" class="active">Home</a>
+      <a href="/ssso/register">Register RP</a>
+      <a href="/ssso/login">Sign in</a>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="masthead">
+    <div class="wrap">
+      <h1>Single Sign-On with an oblivious identity broker</h1>
+      <p class="lede">
+        A broker routes every login between the app and the identity provider, yet
+        <b>never learns your identity</b>, <b>cannot link you across apps</b>, and <b>never sees your
+        personal data</b> — and the identity provider never learns which app you signed in to.
+      </p>
+
+      <div class="flow">
+        <div class="party user"><div class="ic">👤</div><div class="nm">User</div><div class="role">you, at the browser</div></div>
+        <div class="party rp"><div class="ic">🖥️</div><div class="nm">RP</div><div class="role">the app you sign in to</div></div>
+        <div class="party broker"><div class="ic">🕶️</div><div class="nm">Broker</div><div class="role">routes the login</div><span class="tag">oblivious</span></div>
+        <div class="party idp"><div class="ic">🔑</div><div class="nm">IdP</div><div class="role">issues your credentials</div></div>
+      </div>
+      <div class="note">
+        The <b>TCA</b> (Trusted Client Agent) runs on its own origin and holds your key material in the
+        browser. The broker only ever sees pseudonyms (<span class="mono">acid</span>,
+        <span class="mono">auid</span>) and ciphertext.
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- ACTIONS: one row per protocol step. -->
+    <div class="card">
+      <h2>Four things to try</h2>
+      <div class="actions">
+
+        <a class="action" href="/ssso/register">
+          <div class="lead">
+            <span class="avatar rp">🖥️</span>
+            <span class="rowline"><span class="num">1</span><span class="actor rp">RP</span></span>
+          </div>
+          <div class="abody">
+            <div class="at"><span class="ti">🏷️</span>Register the app</div>
+            <div class="ad">The RP gets an anonymous credential from the IdP and enrols it at the broker. One-time, no user.</div>
+            <span class="ptag">📄 Phase 1 · Registration</span>
+          </div>
+          <div class="go">&rarr;</div>
+        </a>
+
+        <a class="action" href="/ssso/login">
+          <div class="lead">
+            <span class="avatar user">👤</span>
+            <span class="rowline"><span class="num">2</span><span class="actor user">User</span></span>
+          </div>
+          <div class="abody">
+            <div class="at"><span class="ti">🔐</span>Sign in</div>
+            <div class="ad">Log in through the broker and confirm the RP&rsquo;s identity <b>D</b> with a PIN inside the TCA.</div>
+            <span class="ptag">📄 Phases 2&ndash;4 · Login request, consent, response</span>
+            <span class="ptag ext">➕ Extension · Authorization management</span>
+          </div>
+          <div class="go">&rarr;</div>
+        </a>
+
+        <a class="action" href="/ssso/home">
+          <div class="lead">
+            <span class="avatar user">👤</span>
+            <span class="rowline"><span class="num">3</span><span class="actor user">User</span></span>
+          </div>
+          <div class="abody">
+            <div class="at"><span class="ti">🔄</span>Refresh the token</div>
+            <div class="ad">Renew the access token through the broker, forward-secure. Requires step 2.</div>
+            <span class="ptag ext">➕ Extension · Token refresh</span>
+          </div>
+          <div class="go">&rarr;</div>
+        </a>
+
+        <a class="action" href="/ssso/userinfo">
+          <div class="lead">
+            <span class="avatar user">👤</span>
+            <span class="rowline"><span class="num">4</span><span class="actor user">User</span></span>
+          </div>
+          <div class="abody">
+            <div class="at"><span class="ti">🚫</span>Revoke the authorization</div>
+            <div class="ad">Withdraw this app&rsquo;s access at the IdP, after unlocking <b>D</b> in the TCA. Requires step 2.</div>
+            <span class="ptag ext">➕ Extension · Authorization revoke</span>
+          </div>
+          <div class="go">&rarr;</div>
+        </a>
+
+      </div>
+    </div>
+
+    <div class="foot">OrionLink — Single Sign-On with Oblivious Identity Brokers · demo</div>
+  </div>
+</body>
+</html>

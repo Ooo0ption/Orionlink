@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OrionLink · Register RP</title>
+  <link rel="stylesheet" href="/static/orion.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> OrionLink <small>· Relying Party (App)</small></div>
+    <div class="nav">
+      <a href="/ssso/">Home</a>
+      <a href="/ssso/register" class="active">Register RP</a>
+      <a href="/ssso/login">Sign in</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Register this RP</h1>
+      <div class="muted">
+        A one-time step (Phase 1). The RP proves its identity <b>D</b> to the IdP and receives an
+        <b>anonymous credential</b>, then registers <span class="mono">(cid, DC)</span> at the broker.
+        After this you can sign in. Re-registering is safe — it issues a fresh credential.
+      </div>
+    </div>
+
+    <!-- The two registration exchanges. -->
+    <div class="card">
+      <h2>The two exchanges</h2>
+
+      <div class="steprow">
+        <div class="stepbtn">
+          <button class="btn" id="registerIdp">🔑 Register to IdP</button>
+          <div class="msg muted" id="idpMsg"></div>
+        </div>
+        <div class="stepcopy">
+          <div class="st">Step 1 · RP → IdP</div>
+          <p class="muted">
+            The RP blinds its identity key and asks the IdP to sign it. It gets back the domain
+            credential <span class="mono">DC</span> and the secret credential <span class="mono">SC</span>
+            — an anonymous credential the IdP itself cannot later recognise.
+          </p>
+          <div class="token" id="registerIdpResult" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="steprow">
+        <div class="stepbtn">
+          <button class="btn" id="registerBroker" disabled>🕶️ Register to Broker</button>
+          <div class="msg muted" id="brokerMsg"></div>
+        </div>
+        <div class="stepcopy">
+          <div class="st">Step 2 · RP → Broker</div>
+          <p class="muted">
+            The RP hands <span class="mono">(cid, DC)</span> to the broker, which stores it under an
+            internal handle and can from then on route logins for this RP — while only ever seeing a
+            randomized form of the credential.
+          </p>
+          <div class="token" id="registerBrokerResult" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- What the RP walks away with. -->
+    <div class="card">
+      <h2>Identity obtained</h2>
+      <div class="idgrid">
+        <div class="kv"><span class="k">Domain <span class="mono">D</span></span><span class="v mono" id="idDomain">—</span></div>
+        <div class="kv"><span class="k">Domain credential <span class="mono">DC = (D, σ)</span></span><span class="v mono" id="idSigma">—</span></div>
+        <div class="kv"><span class="k">Secret credential <span class="mono">SC = (isk, σ̄)</span></span><span class="v mono" id="idSc">—</span></div>
+      </div>
+      <div class="note">
+        <span class="mono">σ</span> and <span class="mono">σ̄</span> are Pointcheval–Sanders signatures;
+        they are randomized on every login, so two logins from this RP are unlinkable to the broker.
+        <span class="mono">isk</span> never leaves this server — it is shown here only because this is a
+        demo deployment. Values are truncated.
+      </div>
+      <div class="note">Done? <a href="/ssso/login">Continue to sign in →</a></div>
+    </div>
+
+    <div class="foot">OrionLink — Single Sign-On with Oblivious Identity Brokers · demo</div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const registerIdpBtn = $('registerIdp');
+    const registerBrokerBtn = $('registerBroker');
+
+    // Display helpers: truncate, decode base64 UTF-8, and render a byte array as base64.
+    const clip = (s, n = 28) => !s ? '—' : (s.length > n ? s.slice(0, n) + '…' : s);
+    const b64utf8 = (s) => { try { return decodeURIComponent(escape(atob(s))); } catch (e) { return s; } };
+    const bytesB64 = (v) => Array.isArray(v) ? btoa(String.fromCharCode(...v)) : String(v || '');
+
+    // Reveals a result box with the given text.
+    function show(boxId, text) {
+      const box = $(boxId);
+      box.style.display = 'block';
+      box.textContent = text;
+    }
+
+    // Posts a registration request and returns its response with the elapsed time.
+    async function postRegister(path) {
+      const start = performance.now();
+      const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const ms = (performance.now() - start).toFixed(0);
+      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
+      return { data: await res.json(), ms };
+    }
+
+    $('idDomain').textContent = location.origin + '/ssso/callback';
+
+    // The credentials are held server-side and echoed back only by a fresh
+    // registration, so the page says so rather than showing blanks.
+    for (const id of ['idSigma', 'idSc']) {
+      $(id).innerHTML = '<span class="muted">held by the RP · register to reveal</span>';
+    }
+
+    // Runs the RP to IdP registration and displays the credentials it yields.
+    registerIdpBtn.addEventListener('click', async () => {
+      registerIdpBtn.disabled = true;
+      $('idpMsg').textContent = 'Registering…';
+      try {
+        const { data, ms } = await postRegister('/ssso/registerIdp');
+        $('idpMsg').textContent = '✓ ' + ms + ' ms';
+        show('registerIdpResult', JSON.stringify(data, null, 2));
+        if (data.DomainCred) {
+          $('idDomain').textContent = b64utf8(bytesB64(data.DomainCred.Domain));
+          $('idSigma').textContent = 'σ ' + clip(bytesB64(data.DomainCred.Sigma));
+        }
+        if (data.SecretCred) {
+          $('idSc').textContent = 'isk ' + clip(bytesB64(data.SecretCred.IdentitySk), 16) +
+                                  ' · σ̄ ' + clip(bytesB64(data.SecretCred.SigmaBar));
+        }
+        registerBrokerBtn.disabled = false;
+      } catch (e) {
+        $('idpMsg').textContent = '✗ ' + e.message;
+        registerIdpBtn.disabled = false;
+      }
+    });
+
+    // Runs the RP to Broker registration.
+    registerBrokerBtn.addEventListener('click', async () => {
+      registerBrokerBtn.disabled = true;
+      $('brokerMsg').textContent = 'Registering…';
+      try {
+        const { data, ms } = await postRegister('/ssso/registerBroker');
+        $('brokerMsg').textContent = '✓ ' + ms + ' ms';
+        show('registerBrokerResult', 'Enrolled at the broker — it can now route logins for this RP.');
+      } catch (e) {
+        $('brokerMsg').textContent = '✗ ' + e.message;
+        registerBrokerBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

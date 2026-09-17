@@ -1,0 +1,18 @@
+{
+  "name": "orionlink-tca-deps",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Build-time dependency bundling for the TCA origin. See build-vendor.sh.",
+  "type": "module",
+  "scripts": {
+    "build": "./build-vendor.sh"
+  },
+  "dependencies": {
+    "@noble/bls12-381": "1.4.0",
+    "@noble/hashes": "2.3.0",
+    "ristretto255": "0.1.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1"
+  }
+}

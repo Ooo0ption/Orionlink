@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>TCA — Authorization management</title>
+    <!-- Deployment addresses, rendered per container. Not SRI-pinned, since its
+         contents vary by deployment; it carries public routing information only.
+         Runs before the bundle, which reads window.ORION at evaluation time. -->
+    <script src="./orion-config.js" defer></script>
+    <!-- The page's one script: SRI-pinned and built by tca/build-app.sh from
+         dvf_authorize.js, cryptolib.js and the vendored dependencies. Regenerate
+         the hash after editing any of them (tca/SRI.md). -->
+    <script type="module" src="./dvf_authorize.bundle.js"
+            integrity="sha384-1e7WARHsTRmOtLnaHk62dWr4hF0BxHGx30ty5tnSJyyttBzEVlhLp1Keff3jOxau"
+            crossorigin="anonymous"></script>
+    <style>
+        /* Same design language as dvf.html. */
+        :root {
+            --bg: #ffffff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+            --brand: #4f46e5; --brand-soft: #eef2ff; --ok: #16a34a; --code: #7c3aed;
+            --warn-bg: #fffbeb; --warn-text: #b45309;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0f172a; --text:#e6ebf5; --muted:#93a1b8; --border:#24304a;
+                --brand:#8b93ff; --brand-soft:#1a2136; --ok:#4ade80; --code:#c4b5fd;
+                --warn-bg:#241c07; --warn-text:#fbbf24; }
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--text); background: var(--bg); line-height: 1.5; }
+        .head { display: flex; align-items: center; gap: 8px; }
+        .badge { font-size: 11px; font-weight: 700; color: var(--brand);
+            background: var(--brand-soft); padding: 2px 9px; border-radius: 999px; }
+        h2 { margin: 0; font-size: 15px; font-weight: 800; }
+        .sub { margin: 4px 0 14px; color: var(--muted); font-size: 12px; }
+
+        /* PIN prompt. */
+        .prompt label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 5px; }
+        .field { display: flex; gap: 8px; align-items: center; }
+        input[name="pin"] { flex: 1; padding: 10px 11px; font-size: 14px; border: 1px solid var(--border);
+            border-radius: 9px; background: var(--bg); color: var(--text); }
+        button { padding: 10px 18px; border: 0; border-radius: 9px; background: var(--brand);
+            color: #fff; cursor: pointer; font-weight: 700; font-size: 14px; }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        #notice_message:not(:empty) { display: block; margin-top: 10px; padding: 7px 10px;
+            background: var(--warn-bg); color: var(--warn-text); border: 1px solid #f59e0b;
+            border-radius: 8px; font-size: 12.5px; }
+
+        /* The decrypted record, rendered only inside this frame. */
+        .result { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+        .result .rl { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--muted); }
+        #Domain { display: block; margin-top: 2px; font-size: 15px; font-weight: 700; word-break: break-all; }
+        .result .row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border);
+            font-size: 11.5px; color: var(--muted); }
+        #ACID, #Nonce { display: block; margin-top: 2px; color: var(--code);
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            word-break: break-all; overflow-wrap: anywhere; }
+    </style>
+</head>
+
+<body>
+    <div class="head"><span class="badge">TCA</span><h2>Which app is this authorization for?</h2></div>
+    <p class="sub">This frame runs on its own origin — the IdP cannot read your PIN, or the app identity it
+        unlocks.</p>
+
+    <div class="prompt" id="pin_input_div" style="display:none">
+        <label for="pin">Enter your PIN to decrypt</label>
+        <div class="field">
+            <input name="pin" id="pin" type="password" placeholder="PIN" />
+            <button id="submit_pin_btn" disabled>Decrypt</button>
+        </div>
+    </div>
+
+    <div class="result" id="rp_domain_div" style="display:none">
+        <div class="rl">This authorization belongs to</div>
+        <span id="Domain"></span>
+        <div class="row">Session pseudonym (acid)<span id="ACID"></span></div>
+        <div class="row">Nonce<span id="Nonce"></span></div>
+    </div>
+
+    <span id="notice_message"></span>
+</body>
+
+</html>

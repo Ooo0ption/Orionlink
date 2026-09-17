@@ -1,0 +1,59 @@
+#
+# Builds the self-contained OrionLink AE image without network access. The base
+# image must already exist locally (load the exported tar first on an offline
+# machine).
+ARG ORION_BASE_IMAGE=orionlink-ae-linux-base:go1.25.1-k6-1.8.0
+
+FROM ${ORION_BASE_IMAGE} AS builder
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN --network=none go mod verify
+
+COPY main.go ./
+COPY Broker ./Broker
+COPY IdP ./IdP
+COPY RP ./RP
+COPY internal ./internal
+COPY lib ./lib
+
+ARG TARGETARCH
+RUN --network=none CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
+    go build -trimpath -ldflags='-s -w' -o /out/orionlink ./main.go
+
+FROM ${ORION_BASE_IMAGE}
+WORKDIR /app
+
+COPY --from=builder /out/orionlink /app/orionlink
+COPY RP/static /app/RP/static
+COPY RP/config /app/RP/config
+COPY Broker/static /app/Broker/static
+COPY Broker/config /app/Broker/config
+COPY IdP/static /app/IdP/static
+COPY IdP/config /app/IdP/config
+
+COPY tca /usr/share/nginx/html
+COPY tca/nginx.conf /etc/nginx/conf.d/default.conf
+COPY tca/docker-entrypoint.d/40-orion-config.sh /usr/local/bin/orion-render-tca
+COPY docker/ae-entrypoint.sh /usr/local/bin/orion-entrypoint
+COPY docker/orion-netem.sh /usr/local/bin/orion-netem
+COPY benchmark/run-e3.sh /app/benchmark/run-e3.sh
+COPY benchmark/e3 /app/benchmark/e3
+
+RUN --network=none chmod 0755 \
+      /app/orionlink \
+      /app/benchmark/run-e3.sh \
+      /usr/local/bin/orion-entrypoint \
+      /usr/local/bin/orion-netem \
+      /usr/local/bin/orion-render-tca \
+    && mkdir -p /app/benchmark/results /usr/share/nginx/orion /etc/nginx/orion
+
+ENV ORION_ASSET_DIR=/app \
+    GOPROXY=off \
+    GOSUMDB=off \
+    GOTOOLCHAIN=local
+
+EXPOSE 3000 3001 3002 3003
+
+ENTRYPOINT ["/usr/local/bin/orion-entrypoint"]
+CMD ["idp"]

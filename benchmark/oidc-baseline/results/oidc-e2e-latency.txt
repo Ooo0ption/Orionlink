@@ -1,0 +1,50 @@
+Test #1 At: 2026-08-11 05:30:07
+  T1(Login->IdP渲染): 49ms
+  T2(Submit->UserView): 22ms
+  T3(Total): 71ms
+
+Test #2 At: 2026-08-11 05:30:08
+  T1(Login->IdP渲染): 44ms
+  T2(Submit->UserView): 21ms
+  T3(Total): 65ms
+
+Test #3 At: 2026-08-11 05:30:09
+  T1(Login->IdP渲染): 36ms
+  T2(Submit->UserView): 22ms
+  T3(Total): 58ms
+
+Test #4 At: 2026-08-11 05:30:11
+  T1(Login->IdP渲染): 36ms
+  T2(Submit->UserView): 22ms
+  T3(Total): 58ms
+
+Test #5 At: 2026-08-11 05:30:12
+  T1(Login->IdP渲染): 37ms
+  T2(Submit->UserView): 23ms
+  T3(Total): 61ms
+
+Test #6 At: 2026-08-11 05:30:13
+  T1(Login->IdP渲染): 45ms
+  T2(Submit->UserView): 13ms
+  T3(Total): 58ms
+
+Test #7 At: 2026-08-11 05:30:14
+  T1(Login->IdP渲染): 44ms
+  T2(Submit->UserView): 20ms
+  T3(Total): 64ms
+
+Test #8 At: 2026-08-11 05:30:16
+  T1(Login->IdP渲染): 37ms
+  T2(Submit->UserView): 21ms
+  T3(Total): 58ms
+
+Test #9 At: 2026-08-11 05:30:17
+  T1(Login->IdP渲染): 46ms
+  T2(Submit->UserView): 21ms
+  T3(Total): 68ms
+
+Test #10 At: 2026-08-11 05:30:18
+  T1(Login->IdP渲染): 45ms
+  T2(Submit->UserView): 21ms
+  T3(Total): 66ms
+

@@ -1,0 +1,27 @@
+{
+    "Port": "14932",
+    "OIDCRedirectURI": "http://localhost:14932/oauth2/callback",
+    "SecureSSORedirectURI": "http://localhost:14932/ssso/callback",
+    "IdPConfig": {
+        "BrowserReachURL": "http://localhost:14930",
+        "ServerReachURL": "http://idp:14930",
+        "OIDCConfig": {
+            "AuthorizePath": "/oauth2/authorize",
+            "TokenPath": "/oauth2/token",
+            "UserInfoPath": "/oauth2/userinfo",
+            "JWKSPath": "/oauth2/.well-known/jwks.json",
+            "RegisterPath": "/oauth2/register"
+        }
+    },
+    "BrokerConfig": {
+        "BrowserReachURL": "http://localhost:14931",
+        "ServerReachURL": "http://broker:14931",
+        "OIDCConfig": {
+            "AuthorizePath": "/oauth2/authorize",
+            "TokenPath": "/oauth2/token",
+            "JWKSPath": "/oauth2/.well-known/jwks.json",
+            "UserInfoPath": "/oauth2/userinfo",
+            "RegisterPath": "/oauth2/register-rp"
+        }
+    }
+}

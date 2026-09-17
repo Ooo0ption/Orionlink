@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>IdP Revoke - Decryption Page</title>
+        <!-- Deployment addresses (window.ORION); served by this role, not compiled in. -->
+        <script src="/ssso/pubconfig.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 20px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        #result_div {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #666;
+            background: #eef;
+            display: none;
+        }
+        #result_div p {
+            margin: 8px 0;
+        }
+        .wrap {
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            white-space: normal;
+        }
+        #notice {
+            margin: 10px 0;
+            color: #666;
+        }
+        #iframe_container {
+            margin-top: 12px;
+        }
+        iframe {
+            border: 1px solid #666;
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>IdP Revoke - Automatic Decryption</h2>
+    <div id="notice">Initializing decryption...</div>
+    <!-- Server-rendered parameters, when the handler supplies them. -->
+    {{ if .JSONData }}
+    <script id="template-data" type="application/json">{{ jsonSafe .JSONData }}</script>
+    {{ end }}
+    <div id="iframe_container"></div>
+    <div id="result_div">
+        <h3>Decryption Result:</h3>
+        <p><strong>RP Domain:</strong> <span id="Domain" class="wrap"></span></p>
+        <p><strong>ACID:</strong> <span id="ACID" class="wrap"></span></p>
+        <p><strong>Nonce:</strong> <span id="Nonce" class="wrap"></span></p>
+    </div>
+
+    <script>
+        const idpURL = window.ORION.idpOrigin + '/ssso';
+        const dvfAuthURL = window.ORION.tcaOrigin + '/dvf_authorize.html';
+        const noticeEl = document.getElementById('notice');
+        const resultDiv = document.getElementById('result_div');
+        const container = document.getElementById('iframe_container');
+        
+        let currentIframe = null;
+        let denc = null;
+        let uid = null;
+        
+        let templateData = null;
+        const templateDataEl = document.getElementById('template-data');
+        if (templateDataEl) {
+            try {
+                const jsonText = templateDataEl.textContent.trim();
+                console.log('[revoke] Template JSON text:', jsonText);
+                if (jsonText) {
+                    templateData = JSON.parse(jsonText);
+                    denc = templateData.denc || null;
+                    uid = templateData.uid || null;
+                    console.log('[revoke] Parsed denc:', denc ? denc.substring(0, 50) + '...' : 'null', 'uid:', uid);
+                }
+            } catch (e) {
+                console.error('[revoke] Failed to parse template data:', e, 'Raw text:', templateDataEl.textContent);
+            }
+        }
+        
+        if (!denc || !uid) {
+            const params = new URLSearchParams(window.location.search);
+            denc = denc || params.get('denc');
+            uid = uid || params.get('uid');
+            console.log('[revoke] From URL params - denc:', denc ? denc.substring(0, 50) + '...' : 'null', 'uid:', uid);
+        }
+
+        // Reports progress to the console and the on-page notice.
+        function log(msg) {
+            console.log('[revoke]', msg);
+            noticeEl.textContent = msg;
+        }
+
+        // Fetches a response body, aborting once the timeout elapses.
+        async function getWithTimeout(url, ms = 5000) {
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), ms);
+            try {
+                const res = await fetch(url, { signal: ac.signal, credentials: 'include' });
+                clearTimeout(timer);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return await res.text();
+            } catch (e) {
+                if (e.name === 'AbortError') throw new Error('timeout');
+                throw e;
+            }
+        }
+
+        // Replaces the TCA frame with a fresh one loading the given page.
+        function createIframe(src) {
+            if (currentIframe) {
+                container.removeChild(currentIframe);
+                currentIframe = null;
+            }
+            const iframe = document.createElement('iframe');
+            iframe.src = src;
+            iframe.width = '100%';
+            iframe.height = '400';
+            iframe.style.border = '1px solid #666';
+            // allow-same-origin keeps the frame on the TCA's own origin, which
+            // the pinned-targetOrigin handshake needs; the two origins still
+            // differ, so this page cannot read the frame's DOM.
+            iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin');
+            iframe.setAttribute('title', 'remote-document-iframe');
+            container.appendChild(iframe);
+            currentIframe = iframe;
+            log('iframe created for ' + src);
+            return iframe;
+        }
+
+        // Hands the stored record to the TCA frame once it is ready, and relays
+        // its OPRF request to the IdP. The decrypted values stay in the frame.
+        window.addEventListener('message', async function (event) {
+            if (!event.data || !event.data.type) {
+                return;
+            }
+
+            switch (event.data.type) {
+                case 'dvf_ready':
+                    log('DVF iframe is ready, sending decrypt message...');
+                    if (currentIframe && currentIframe.contentWindow) {
+                        currentIframe.contentWindow.postMessage({ 
+                            type: 'decrypt', 
+                            denc: denc, 
+                            uid: uid 
+                        }, '*');
+                        log('decrypt message sent to iframe');
+                    }
+                    break;
+                case 'alpha':
+                    log('Received alpha message from iframe: '+event.data.alpha);
+                const alpha_param = new URLSearchParams({ alpha: event.data.alpha });
+                const beta = await getWithTimeout(idpURL+'/authorize/beta?'+alpha_param.toString(), 5000)
+                    .then(text=>{
+                        log('Received beta from IdP: '+text);
+                        return text;
+                    })
+                    .catch(err=>{
+                        log('Error getting beta from IdP: '+err);
+                        return null;
+                    });
+                if (beta && typeof beta === 'string') {
+                    currentIframe.contentWindow.postMessage({type:'beta', beta:beta}, '*');
+                } else {
+                    log('Error: Cannot send invalid beta to iframe');
+                }
+                    break;
+                case 'decryption_done':
+                    log('Decryption completed in iframe.');
+                    break;
+            }
+        });
+
+        // Starts the flow by loading the TCA frame; the record is handed over once
+        // the frame reports itself ready.
+        async function autoStartDecryption() {
+            if (!denc || !uid) {
+                log('Error: Missing denc or uid parameter. Please provide them via template or URL query string.');
+                return;
+            }
+
+            log('Starting automatic decryption...');
+            createIframe(dvfAuthURL);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            autoStartDecryption();
+        });
+    </script>
+</body>
+
+</html>
+

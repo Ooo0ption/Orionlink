@@ -1,0 +1,91 @@
+# Go: common ignores for binaries, build outputs and tooling
+
+# Binaries and build artifacts
+/bin/
+/build/
+/out/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+
+# Test, coverage and profiling
+*.test
+coverage.out
+*.coverprofile
+*.prof
+
+# Vendor (remove if you vendor dependencies intentionally)
+vendor/
+Godeps/_workspace/
+
+# Go tool build cache and pkg (optional)
+pkg/
+*.exe~
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.rsuser
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs, temp and secrets
+*.log
+tmp/
+.env
+.env.local
+
+# Reference File
+*.pdf
+# ...except the artifact evaluation appendix, which ships with the repo.
+!Artifact-Appendix.pdf
+# OrionLink runtime state (NDSS AE): generated at first run, never committed.
+# These files embed deployment-specific addresses and freshly minted keys, so a
+# committed copy is exactly the "works on the author's machine" hazard the
+# "Artifacts Functional" criteria rule out — an evaluator changing ORION_*_URL
+# would inherit registrations pointing at the authors' URLs.
+# The *protocol path* config (RP/config/config.json, Broker/config/config.json)
+# and the demo user fixture (IdP/config/users.json) stay tracked.
+*/config/key_storage.json
+*/config/registration_data.json
+IdP/config/Register_user.json
+
+# Mutable data directory when ORION_DATA_DIR points inside the repo.
+/data/
+
+# LaTeX build products under docs/. Only the .tex sources are tracked; latexmk
+# regenerates these on every compile, so a committed copy is pure diff noise.
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+
+# TCA dependency tooling. package.json/package-lock.json pin the versions and
+# vendor/crypto-deps.js (the built bundle) IS committed, so that an offline
+# checkout can serve the TCA without npm. Only the install tree is ignored.
+tca/node_modules/
+# ...but the generic `vendor/` rule above must not swallow the committed bundle.
+!tca/vendor/
+!tca/vendor/**
+
+# Generated experiment reports — every harness recreates the directory
+/benchmark/results/
+
+# Local docs and paper-appendix working copies
+/docs/

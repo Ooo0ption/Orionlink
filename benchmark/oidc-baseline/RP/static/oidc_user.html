@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signed in · Brokered OIDC RP</title>
+    <style>
+        :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b;
+            --line:#e2e8f0; --brand:#4f46e5; --brand-soft:#eef2ff;
+            --ok:#16a34a; --ok-soft:#f0fdf4; --code:#0b1020; --code-ink:#d7e0ff; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0b1020; --card:#121a2e; --ink:#e6ebf5; --muted:#93a1b8;
+                --line:#24304a; --brand:#8b93ff; --brand-soft:#1a2136;
+                --ok:#4ade80; --ok-soft:#10231a; --code:#060912; --code-ink:#cfe0ff; }
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); line-height:1.5;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+        .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+            border-bottom:1px solid var(--line); background:var(--card); font-weight:800; }
+        .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+            box-shadow:0 0 0 4px var(--brand-soft); }
+        .topbar small { color:var(--muted); font-weight:600; }
+        .container { max-width:760px; margin:0 auto; padding:28px 20px 60px; }
+        .card { padding:22px; margin-bottom:16px; background:var(--card);
+            border:1px solid var(--line); border-radius:16px; box-shadow:0 1px 2px rgba(2,6,23,.04); }
+        .hero { display:flex; align-items:center; gap:14px; }
+        .check { width:44px; height:44px; flex:none; display:grid; place-items:center;
+            border-radius:50%; color:var(--ok); background:var(--ok-soft); font-size:22px; font-weight:800; }
+        h1 { margin:0; font-size:22px; }
+        h3 { margin:0 0 12px; color:var(--muted); font-size:14px; letter-spacing:.05em; text-transform:uppercase; }
+        .user-info p { display:flex; justify-content:space-between; gap:16px; margin:0;
+            padding:8px 0; border-bottom:1px dashed var(--line); font-size:14px; }
+        .user-info p:last-child { border-bottom:0; }
+        .user-info p strong { color:var(--muted); font-weight:600; }
+        .token-info { margin-top:12px; }
+        .token-info h4 { margin:0 0 6px; color:var(--muted); font-size:12px; }
+        .token-info p { max-height:90px; margin:0; padding:11px 13px; overflow:auto;
+            color:var(--code-ink); background:var(--code); border-radius:10px;
+            font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:11.5px; word-break:break-all; }
+        .logout-btn { padding:10px 17px; color:var(--brand); background:transparent;
+            border:1px solid var(--brand); border-radius:10px; cursor:pointer; font-weight:700; }
+    </style>
+</head>
+<body>
+    <div class="topbar"><span class="dot"></span>Brokered OIDC <small>· Relying Party</small></div>
+    <div class="container">
+        <section class="card hero">
+            <div class="check">✓</div>
+            <h1>Sign-in successful</h1>
+        </section>
+        <section class="card user-info">
+            <h3>User Information</h3>
+            <p><strong>Subject ID:</strong> {{.UserInfo.Sub}}</p>
+            <p><strong>Name:</strong> {{.UserInfo.Name}}</p>
+            <p><strong>Email:</strong> {{.UserInfo.Email}}</p>
+        </section>
+
+        <section class="card">
+          <div class="token-info">
+            <h4>Access Token:</h4>
+            <p>{{.AccessToken}}</p>
+          </div>
+          <div class="token-info">
+            <h4>ID Token:</h4>
+            <p>{{.IDToken}}</p>
+          </div>
+        </section>
+
+        <form method="post" action="/oauth2/logout">
+            <button type="submit" class="logout-btn">Logout</button>
+        </form>
+    </div>
+    <script>
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const startTime = parseInt(params.get('startTime'), 10);
+            const idpRenderAt = parseInt(params.get('t_idp_render'), 10);
+            const idpSubmitAt = parseInt(params.get('t_idp_submit'), 10);
+            const userViewAt = Date.now();
+
+            if (startTime && idpRenderAt && idpSubmitAt) {
+                // 自动上报三段耗时到 RP 后端落盘
+                fetch('/oauth2/metrics', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        startTime: startTime,
+                        idpRenderAt: idpRenderAt,
+                        idpSubmitAt: idpSubmitAt,
+                        userViewAt: userViewAt
+                    })
+                }).then(() => {
+                    console.log("Metrics sent successfully");
+                }).catch(err => {
+                    console.error("Failed to send metrics", err);
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

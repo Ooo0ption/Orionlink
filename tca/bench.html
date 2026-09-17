@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OrionLink TCA Crypto Microbenchmark</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 1rem;
+           line-height: 1.4; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;
+                margin: 1rem 0; }
+    button { font-size: 1rem; padding: .5rem 1rem; cursor: pointer; }
+    input[type=number] { width: 5rem; font-size: 1rem; padding: .25rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; font-variant-numeric: tabular-nums; }
+    th, td { border: 1px solid #8888; padding: .35rem .5rem; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    thead th { background: #8882; }
+    .env { font-size: .8rem; opacity: .8; white-space: pre-wrap; word-break: break-all; }
+    .status { margin: .5rem 0; font-weight: bold; }
+    .note { font-size: .8rem; opacity: .75; }
+    tr.group td { background: #8881; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>OrionLink TCA Crypto Microbenchmark</h1>
+  <p class="note">
+    Measures <strong>pure client-side cryptographic CPU time</strong> of the TCA
+    (DVF) primitives in <code>cryptolib.js</code>. No network / no server
+    round-trips are included. <code>console.log</code> is suppressed during
+    timed runs so debug output does not pollute the numbers. Report the
+    <strong>median</strong> column; p95 flags thermal-throttling / GC jitter.
+  </p>
+
+  <div class="controls">
+    <label>iterations <input type="number" id="iters" value="50" min="1" /></label>
+    <label>warmup <input type="number" id="warmup" value="5" min="0" /></label>
+    <label><input type="checkbox" id="keeplog" /> keep console.log</label>
+    <button id="run">Run benchmark</button>
+    <button id="copy" disabled>Copy JSON</button>
+  </div>
+
+  <div class="status" id="status">Loading crypto library…</div>
+  <div class="env" id="env"></div>
+
+  <table id="results" hidden>
+    <thead>
+      <tr><th>Operation</th><th>median (ms)</th><th>p95 (ms)</th><th>min (ms)</th><th>mean (ms)</th><th>n</th><th>batch</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module">
+    import * as bls from 'https://esm.sh/@noble/bls12-381';
+    import { sha512 } from 'https://esm.sh/@noble/hashes@latest/sha2.js';
+    import {
+      PSVerify, PSPublicKey, GenerateDEnc, DecryptDEnc, GenerateEncKey,
+      CreateRegistrationRequest, uint8ArrayToString,
+    } from './cryptolib.js';
+
+    const $ = (id) => document.getElementById(id);
+    const status = $('status');
+
+    const R = BigInt('0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001');
+    // Draws a random non-zero BLS12-381 scalar.
+    function randScalar() {
+      const b = crypto.getRandomValues(new Uint8Array(32));
+      let n = 0n; for (const x of b) n = (n << 8n) | BigInt(x);
+      n = n % R;
+      return n === 0n ? 1n : n;
+    }
+    const randB64 = (len) => uint8ArrayToString(crypto.getRandomValues(new Uint8Array(len)));
+
+    // ---- percentile helpers ----
+    // Summarizes a sample set as median, p95, min, mean and count.
+    function stats(samples) {
+      const s = [...samples].sort((a, b) => a - b);
+      const q = (p) => s[Math.min(s.length - 1, Math.floor(p * (s.length - 1)))];
+      const mean = s.reduce((a, b) => a + b, 0) / s.length;
+      return { median: q(0.5), p95: q(0.95), min: s[0], mean, n: s.length };
+    }
+    const fmt = (x) => x.toFixed(x < 1 ? 4 : x < 10 ? 3 : 2);
+
+    // ---- timing core (async-aware, with auto-batching) ----
+    // Safari clamps performance.now() to ~1ms. To measure sub-ms ops we time a
+    // BATCH of K calls per sample and divide by K, choosing K so each batch
+    // takes >= TARGET_MS. This defeats the clamp on every engine.
+    const TARGET_MS = 25;
+
+    // Picks the batch size at which one batch of fn takes about TARGET_MS.
+    async function calibrateBatch(fn) {
+      let batch = 1;
+      for (let step = 0; step < 24; step++) {           // cap growth
+        const t0 = performance.now();
+        for (let i = 0; i < batch; i++) await fn();
+        const dt = performance.now() - t0;
+        if (dt >= 5) {                                   // enough signal to extrapolate
+          const perCall = dt / batch;
+          return Math.max(1, Math.round(TARGET_MS / perCall));
+        }
+        batch *= 4;
+      }
+      return batch;
+    }
+
+    // Measures per-call time of fn over iters batched samples, after warmup runs
+    // and with the library's own logging silenced unless keepLog is set.
+    async function timed(name, fn, iters, warmup, keepLog) {
+      const realLog = console.log, realDebug = console.debug;
+      if (!keepLog) { console.log = () => {}; console.debug = () => {}; }
+      try {
+        for (let i = 0; i < warmup; i++) await fn();
+        const batch = await calibrateBatch(fn);
+        const samples = [];
+        for (let i = 0; i < iters; i++) {
+          const t0 = performance.now();
+          for (let k = 0; k < batch; k++) await fn();
+          samples.push((performance.now() - t0) / batch);   // per-call time
+        }
+        return { name, batch, ...stats(samples) };
+      } finally {
+        console.log = realLog; console.debug = realDebug;
+      }
+    }
+
+    const hasSubtle = !!(crypto && crypto.subtle);
+
+    // ---- build valid fixtures once (their construction is NOT timed) ----
+    // Builds the valid inputs every measured operation runs against.
+    async function buildFixtures() {
+      const s1 = bls.PointG1.BASE.multiply(randScalar());
+      const s2 = bls.PointG1.BASE.multiply(randScalar());
+      const acid = JSON.stringify({
+        Sigma1: uint8ArrayToString(s1.toRawBytes(true)),
+        Sigma2: uint8ArrayToString(s2.toRawBytes(true)),
+      });
+      const cvk = new PSPublicKey(
+        bls.PointG1.BASE.multiply(randScalar()),
+        bls.PointG2.BASE.multiply(randScalar()),
+        bls.PointG2.BASE.multiply(randScalar()),
+      );
+      const domain = randB64(32);
+      const t = randB64(32);
+      const encKey = crypto.getRandomValues(new Uint8Array(32));
+
+      // one encryption to feed DecryptDEnc (AES-GCM needs a secure context;
+      // over plain http:// crypto.subtle is absent — skip rather than abort).
+      const denc = hasSubtle ? await GenerateDEnc(encKey, randB64(16), acid) : null;
+
+      // a valid Ristretto scalar r for GenerateEncKey (from a real registration)
+      const { rBig } = await CreateRegistrationRequest('1234', 'alice');
+      const beta = randB64(32);
+
+      // primitives
+      const g1 = bls.PointG1.BASE.multiply(randScalar());
+      const g2 = bls.PointG2.BASE.multiply(randScalar());
+      const msg64 = crypto.getRandomValues(new Uint8Array(64));
+
+      return { acid, cvk, domain, t, encKey, denc, rBig, beta, g1, g2, msg64 };
+    }
+
+    // Runs every case with the settings from the form and renders the results table.
+    async function run() {
+      const iters = Math.max(1, parseInt($('iters').value, 10) || 50);
+      const warmup = Math.max(0, parseInt($('warmup').value, 10) || 0);
+      const keepLog = $('keeplog').checked;
+      $('run').disabled = true; $('copy').disabled = true;
+      status.textContent = 'Building fixtures…';
+      await new Promise((r) => setTimeout(r, 20));
+
+      const F = await buildFixtures();
+
+      // name -> thunk. Grouped: DVF high-level funcs, then raw primitives.
+      const cases = [
+        ['— DVF client functions —', null],
+        ['PSVerify (2× pairing)',        () => PSVerify(F.acid, F.domain, F.t, F.cvk)],
+        ['CreateRegistrationRequest (OPRF blind)', () => CreateRegistrationRequest('1234', 'alice')],
+        ['GenerateEncKey (OPRF unblind + HKDF)',   () => GenerateEncKey(F.beta, F.rBig)],
+        ...(hasSubtle ? [
+          ['GenerateDEnc (AES-GCM enc)',   () => GenerateDEnc(F.encKey, randB64(16), F.acid)],
+          ['DecryptDEnc (AES-GCM dec)',    () => DecryptDEnc(F.encKey, F.denc.combined)],
+        ] : [
+          ['GenerateDEnc / DecryptDEnc (AES-GCM) — skipped: needs HTTPS or localhost', null],
+        ]),
+        ['— raw primitives (attribution) —', null],
+        ['bls.pairing',                  () => bls.pairing(F.g1, F.g2)],
+        ['G1 scalar mult',               () => bls.PointG1.BASE.multiply(randScalar())],
+        ['G2 scalar mult',               () => bls.PointG2.BASE.multiply(randScalar())],
+        ['sha512 (64B)',                 () => sha512(F.msg64)],
+      ];
+
+      const tbody = $('results').querySelector('tbody');
+      tbody.innerHTML = '';
+      $('results').hidden = false;
+      const rows = [];
+
+      for (const [name, fn] of cases) {
+        if (fn === null) {
+          const tr = document.createElement('tr');
+          tr.className = 'group';
+          tr.innerHTML = `<td colspan="7">${name}</td>`;
+          tbody.appendChild(tr);
+          continue;
+        }
+        status.textContent = `Timing: ${name} …`;
+        await new Promise((r) => setTimeout(r, 0));
+        const res = await timed(name, fn, iters, warmup, keepLog);
+        rows.push(res);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${name}</td><td>${fmt(res.median)}</td><td>${fmt(res.p95)}</td>` +
+                       `<td>${fmt(res.min)}</td><td>${fmt(res.mean)}</td><td>${res.n}</td><td>${res.batch}</td>`;
+        tbody.appendChild(tr);
+      }
+
+      const payload = {
+        meta: {
+          ts: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          hardwareConcurrency: navigator.hardwareConcurrency,
+          deviceMemory: navigator.deviceMemory ?? null,
+          iters, warmup, keepLog,
+        },
+        results: rows,
+      };
+      $('copy').disabled = false;
+      $('copy').onclick = async () => {
+        try { await navigator.clipboard.writeText(JSON.stringify(payload, null, 2)); $('copy').textContent = 'Copied ✓'; }
+        catch { const t = JSON.stringify(payload, null, 2); prompt('Copy JSON:', t); }
+        setTimeout(() => ($('copy').textContent = 'Copy JSON'), 1500);
+      };
+      status.textContent = `Done. ${iters} iterations each (median of the "median" column is the number to report).`;
+      $('run').disabled = false;
+    }
+
+    $('env').textContent =
+      `UA: ${navigator.userAgent}\n` +
+      `logical cores: ${navigator.hardwareConcurrency} · deviceMemory: ${navigator.deviceMemory ?? 'n/a'} GB · ` +
+      `secureContext: ${window.isSecureContext} · crypto.subtle: ${!!(crypto && crypto.subtle)}`;
+
+    // sanity: ensure crypto.subtle exists (AES-GCM needs a secure context)
+    if (!(crypto && crypto.subtle)) {
+      status.textContent = '⚠ crypto.subtle unavailable — open via localhost or HTTPS (see note). AES-GCM cases will fail.';
+    } else {
+      status.textContent = 'Ready. Set iterations and click "Run benchmark".';
+    }
+    $('run').onclick = run;
+  </script>
+</body>
+</html>

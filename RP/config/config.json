@@ -1,0 +1,28 @@
+{
+    "_comment": [
+        "Protocol paths only. These are part of the wire contract, defined in",
+        "internal/protocol and served by the /ssso/* handlers,",
+        "and are identical in every deployment, so they are tracked in git.",
+        "Service ADDRESSES are NOT set here — they come from the ORION_* environment",
+        "variables and are applied by RuntimeConfig.ApplyEnv at startup. Editing an",
+        "address here would have no effect; edit .env instead."
+    ],
+    "IdPConfig": {
+        "SecureSSOConfig": {
+            "RegisterPath": "/ssso/rpregister",
+            "PubKeyPath": "/ssso/pubkeys",
+            "EmpKeyPath": "/ssso/aake/getempkey",
+            "UserInfoPath": "/ssso/userinfo"
+        }
+    },
+    "BrokerConfig": {
+        "SecureSSOConfig": {
+            "JWKSPath": "/ssso/.well-known/jwks.json",
+            "RegisterPath": "/ssso/rpregister",
+            "AuthorizePath": "/ssso/authorize",
+            "PubKeyPath": "/ssso/pubkeys",
+            "TokenPath": "/ssso/token",
+            "RefreshPath": "/ssso/refresh"
+        }
+    }
+}

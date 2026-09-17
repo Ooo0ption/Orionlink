@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authentication error · Brokered OIDC RP</title>
+    <style>
+        :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b;
+            --line:#e2e8f0; --brand:#4f46e5; --brand-soft:#eef2ff;
+            --bad:#dc2626; --bad-soft:#fef2f2; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0b1020; --card:#121a2e; --ink:#e6ebf5; --muted:#93a1b8;
+                --line:#24304a; --brand:#8b93ff; --brand-soft:#1a2136;
+                --bad:#f87171; --bad-soft:#2a1414; }
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); line-height:1.5;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+        .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+            border-bottom:1px solid var(--line); background:var(--card); font-weight:800; }
+        .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+            box-shadow:0 0 0 4px var(--brand-soft); }
+        .topbar small { color:var(--muted); font-weight:600; }
+        .container { max-width:560px; margin:0 auto; padding:46px 20px 60px; }
+        .card { padding:24px; background:var(--card); border:1px solid var(--line);
+            border-radius:16px; box-shadow:0 1px 2px rgba(2,6,23,.04); }
+        h1 { margin:0 0 16px; font-size:22px; }
+        .error { padding:14px 16px; color:var(--bad); background:var(--bad-soft);
+            border:1px solid var(--bad); border-radius:10px; }
+        .error h3 { margin:0 0 5px; font-size:15px; }
+        .error p { margin:0; font-size:13.5px; }
+        .back-btn { display:inline-block; margin-top:18px; padding:10px 17px; color:#fff;
+            background:var(--brand); border-radius:10px; text-decoration:none; font-weight:700; }
+    </style>
+</head>
+<body>
+    <div class="topbar"><span class="dot"></span>Brokered OIDC <small>· Relying Party</small></div>
+    <div class="container">
+        <main class="card">
+            <h1>Authentication Error</h1>
+            <div class="error">
+                <h3>Error: {{.Error}}</h3>
+                <p>{{.Description}}</p>
+            </div>
+            <a href="/oauth2/" class="back-btn">Back to Home</a>
+        </main>
+    </div>
+</body>
+</html>

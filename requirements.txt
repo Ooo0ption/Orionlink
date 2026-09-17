@@ -1,0 +1,46 @@
+# OrionLink — host dependencies
+#
+# A checklist, not an installable manifest. It records what has to be present on
+# the HOST. Everything the containers carry is pinned in Dockerfile.base, which
+# fixes both the version of each tool and the commands that install it, and is
+# the authority whenever a version below is questioned.
+#
+# Exact versions of the Go modules and npm packages are pinned in go.mod /
+# go.sum and benchmark/e2/browser/package-lock.json, and are fetched by the
+# build rather than installed from here.
+#
+# Tested on Ubuntu 24.04, x86-64. Also runs on Ubuntu 22.04 and on Windows with
+# Docker Desktop in Linux-container mode.
+
+
+# --- 1. Docker deployment (recommended) ------------------------------------
+# Brings up the four roles. Nothing else is needed to run the prototype itself,
+# since the submitted image resolves no package from the network.
+
+docker      >= 24            # with the Compose v2 plugin
+
+
+# --- 2. Still required on the host, even under Docker ----------------------
+# The E1 and E2 harnesses are not containerized: they run on the host and drive
+# the containers from outside. E3 needs nothing here, because its load
+# generator is itself a container (the `e3` service, Compose profile
+# `benchmark`).
+
+go          >= 1.25          # E1 and the unit tests; tested 1.25.0
+node        >= 18            # E2 browser half (Playwright, installs Chromium); tested 22.22.1
+python3     >= 3.8           # E2 only, benchmark/e2/summarize.py (stdlib only); tested 3.12.3
+
+
+# --- 3. Only when running WITHOUT Docker -----------------------------------
+# `go run main.go -name=idp|broker|rp` for the three server roles, plus a static
+# origin for the TCA and a load generator for E3. The versions here are the ones
+# Dockerfile.base pins, so that a host-built environment matches the image.
+
+nginx       == 1.31.3        # TCA origin on :3003, config in tca/nginx.conf
+k6          == 1.8.0         # E3 load generator, see benchmark/e3/
+
+# For reference, the toolchain Dockerfile.base pins for the containers:
+#   golang:1.25.1-alpine3.21   Go distribution, and the go.mod/go.sum module graph
+#   grafana/k6:1.8.0           k6 binary (pinned by digest)
+#   nginx:1.31.3-alpine        runtime base and the TCA origin
+#   apk: bash ca-certificates curl git iproute2

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · OrionLink IdP</title>
+  <!-- Self-contained styling: the IdP is a separate origin and does not serve the
+       RP's stylesheet, so the palette is mirrored here. -->
+  <style>
+    :root {
+      --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+      --brand:#10b981; --brand-soft:#ecfdf5; --warn:#b45309; --warn-soft:#fffbeb; --broker:#f59e0b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0b1020; --card:#121a2e; --ink:#e6ebf5; --muted:#93a1b8; --line:#24304a;
+        --brand:#34d399; --brand-soft:#10231a; --warn:#fbbf24; --warn-soft:#241c07; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); line-height:1.5;
+      font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+    .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+      border-bottom:1px solid var(--line); background:var(--card); font-weight:800; }
+    .topbar .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+      box-shadow:0 0 0 4px var(--brand-soft); }
+    .topbar small { font-weight:600; color:var(--muted); }
+    .page { max-width:430px; margin:0 auto; padding:46px 20px 60px; }
+    .box { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:30px 28px;
+      box-shadow:0 1px 2px rgba(2,6,23,.04); }
+    .logo { width:52px; height:52px; margin:0 auto 12px; border-radius:14px; background:var(--brand-soft);
+      display:grid; place-items:center; font-size:26px; }
+    h1 { font-size:21px; margin:0 0 4px; text-align:center; }
+    .sub { margin:0 0 22px; text-align:center; color:var(--muted); font-size:14px; }
+    label { display:block; font-size:12.5px; font-weight:700; margin:0 0 5px; }
+    input { width:100%; padding:11px 12px; font-size:14px; border:1px solid var(--line);
+      border-radius:10px; background:var(--bg); color:var(--ink); margin-bottom:14px; }
+    input:focus { outline:2px solid var(--brand); outline-offset:1px; }
+    /* Password field and its reveal toggle. */
+    .pw { position:relative; }
+    .pw input { padding-right:64px; }
+    .pw button { position:absolute; top:0; right:6px; height:41px; width:auto; padding:0 10px;
+      background:transparent; color:var(--muted); font-size:12px; font-weight:700; }
+    .pw button:hover { color:var(--brand); filter:none; }
+    button { width:100%; padding:12px 18px; font-size:14px; font-weight:700; color:#fff;
+      background:var(--brand); border:0; border-radius:10px; cursor:pointer; }
+    button:hover { filter:brightness(1.05); }
+    .hint { margin-top:14px; text-align:center; font-size:13px; color:var(--muted); }
+    .mono { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+    .privacy { margin-top:22px; padding:13px 14px; font-size:12.5px; line-height:1.55; color:var(--muted);
+      background:var(--warn-soft); border:1px solid color-mix(in srgb, var(--broker) 30%, transparent);
+      border-radius:10px; }
+    .privacy .ph { font-weight:800; color:var(--warn); margin-bottom:4px; }
+    #entry_state:not(:empty) { display:block; margin-bottom:12px; font-size:13px; color:var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="topbar"><span class="dot"></span> OrionLink <small>· Identity Provider</small></div>
+
+  <div class="page">
+    <div class="box">
+      <div class="logo">🔑</div>
+      <h1>Sign in</h1>
+      <p class="sub">Use your OrionLink identity provider account.</p>
+
+      <form id="login_form" action="/ssso/login" method="POST">
+        <span id="entry_state"></span>
+        <!-- Prefilled with the demo account; the handler falls back to the same
+             pair when the fields arrive empty. -->
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" value="Alice" autofocus />
+        <label for="password">Password</label>
+        <div class="pw">
+          <input id="password" name="password" type="password" autocomplete="current-password" value="Alice-pass" />
+          <button type="button" id="toggle_pw" aria-controls="password" aria-pressed="false">Show</button>
+        </div>
+        <button type="submit">Continue</button>
+      </form>
+
+      <div class="hint">Prefilled with the demo account — <b>Alice</b> / <span class="mono">Alice-pass</span></div>
+
+      <div class="privacy">
+        <div class="ph">🔒 We are not told which app you are signing in to</div>
+        The app's identity reaches us only as a per-session pseudonym, and the broker that carries this
+        login never sees your credentials or your personal data.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Toggles the password field between hidden and visible.
+    (function () {
+      const pw = document.getElementById('password');
+      const btn = document.getElementById('toggle_pw');
+      btn.addEventListener('click', function () {
+        const shown = pw.type === 'text';
+        pw.type = shown ? 'password' : 'text';
+        btn.textContent = shown ? 'Show' : 'Hide';
+        btn.setAttribute('aria-pressed', String(!shown));
+        pw.focus();
+      });
+    })();
+
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      if (!next) return;
+      const form = document.getElementById('login_form');
+      const sep = form.action.includes('?') ? '&' : '?';
+      form.action = form.action + sep + 'next=' + encodeURIComponent(next);
+    })();
+  </script>
+</body>
+</html>

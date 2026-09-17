@@ -1,0 +1,5 @@
+{
+  "client_id": "UXZMMiRBOo3Uuj8XW7kwxw==",
+  "client_secret": "vTffWTNC3cu0e1UAW7ksvcxIIrLpch5mx9K5OYSisF0=",
+  "redirect_uri": "http://localhost:14932/oauth2/callback"
+}

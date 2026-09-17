@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OrionLink · Relying Party</title>
+  <link rel="stylesheet" href="/static/orion.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> OrionLink <small>· Relying Party (App)</small></div>
+    <div class="nav">
+      <a href="/ssso/">Home</a>
+      <a href="/ssso/register">Register RP</a>
+      <a href="/ssso/login">Sign out / new login</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- HERO -->
+    <div class="card hero">
+      <div class="check">✓</div>
+      <div>
+        <h1>Signed in as {{ .Username }}</h1>
+        <div class="muted">Authenticated through an <b>oblivious identity broker</b> — the broker
+          routed this login without ever learning who you are or seeing your data.</div>
+      </div>
+    </div>
+
+    <!-- WHAT JUST HAPPENED -->
+    <div class="card">
+      <h2>What just happened</h2>
+      <div class="flow">
+        <div class="party user"><div class="ic">👤</div><div class="nm">You</div><div class="role">the user</div></div>
+        <div class="party rp"><div class="ic">🖥️</div><div class="nm">RP</div><div class="role">this app</div></div>
+        <div class="party broker"><div class="ic">🕶️</div><div class="nm">Broker</div><div class="role">router</div><span class="tag">oblivious</span></div>
+        <div class="party idp"><div class="ic">🔑</div><div class="nm">IdP</div><div class="role">identity provider</div></div>
+      </div>
+      <div class="phases">
+        <div class="phase"><div class="n">PHASE 1</div><div class="t">Registration</div><div class="d">RP proved its identity <b>D</b> to the IdP and got an anonymous credential; registered it at the broker.</div></div>
+        <div class="phase"><div class="n">PHASE 2</div><div class="t">Login Request</div><div class="d">RP derived a fresh session pseudonym <span class="mono">acid</span> and a secret key <span class="mono">K_S</span>, sent via the broker.</div></div>
+        <div class="phase"><div class="n">PHASE 3</div><div class="t">Auth &amp; Consent</div><div class="d">You logged in at the IdP and confirmed the RP’s identity <b>D</b> inside the trusted TCA.</div></div>
+        <div class="phase"><div class="n">PHASE 4</div><div class="t">Login Response</div><div class="d">IdP encrypted your info under <span class="mono">K_S</span>; the RP decrypted it. The broker only relayed ciphertext.</div></div>
+      </div>
+    </div>
+
+    <!-- PRIVACY COMPARE -->
+    <div class="card">
+      <h2>Who sees what</h2>
+      <div class="cols">
+        <div class="panel rpview">
+          <h3>🖥️ This RP sees <span class="pill ok">decrypted with K_S</span></h3>
+          <div class="kv"><span class="k">Name</span><span class="v">{{ .Username }}</span></div>
+          <div class="kv"><span class="k">Email</span><span class="v">{{ .Email }}</span></div>
+          <div class="kv"><span class="k">Subject (sub)</span><span class="v mono">{{ .Sub }}</span></div>
+        </div>
+        <div class="panel bkview">
+          <h3>🕶️ The Broker sees <span class="pill no">pseudonyms only</span></h3>
+          <div class="kv"><span class="k">Your identity</span><span class="v"><span class="pill no">hidden</span></span></div>
+          <div class="kv"><span class="k">Per-RP pseudonym (uid_rp)</span><span class="v mono" style="font-size:11.5px">{{ .UIDRP }}</span></div>
+          <div class="kv"><span class="k">Name / email / sub</span><span class="v"><span class="cipher">AES-GCM ciphertext</span></span></div>
+        </div>
+      </div>
+      <div class="note">The per-RP pseudonym <span class="mono">uid_rp</span> is unlinkable across RPs (OPRF-derived), so the broker
+        cannot correlate you between services — the core <b>broker-obliviousness</b> guarantee.</div>
+    </div>
+
+    <!-- ACCESS TOKEN -->
+    <div class="card">
+      <h2>Access token (as relayed by the broker)</h2>
+      <div class="token" id="tokenBox">{{ .AccessToken }}</div>
+      <div class="note">Decoded claims below — the broker re-signs the envelope (<span class="mono">iss/aud/exp</span>) but the
+        payload identity claims stay <span class="cipher">encrypted</span>, so it never reads your <span class="mono">sub</span>/<span class="mono">scope</span>.</div>
+      <div id="claims" class="token" style="margin-top:10px; background:transparent; color:var(--ink); border:1px solid var(--line);"></div>
+    </div>
+
+    <!-- REFRESH -->
+    <div class="card">
+      <h2>Forward-secure token refresh</h2>
+      <p class="muted" style="margin-top:0">
+        The broker holds the refresh token and can renew your access token <b>without</b> reading it —
+        each refresh is encrypted under a freshly ratcheted key (forward secrecy + post-compromise security).
+        Refreshes so far: <span class="badge-count" id="rcount">0</span>.
+      </p>
+      <div class="row">
+        <button class="btn" id="refreshBtn">🔄 Refresh access token</button>
+        <span class="muted" id="refreshMsg"></span>
+      </div>
+      <div class="token" id="refreshBox" style="margin-top:12px; display:none;"></div>
+      <div class="note" id="refreshNote" style="display:none;">
+        ↑ A brand-new access token, negotiated broker⇄IdP over the double-ratchet. The broker forwarded only ciphertext.
+      </div>
+    </div>
+
+    <!-- AUTHORIZATION MANAGEMENT / REVOKE -->
+    <div class="card">
+      <h2>Authorization management</h2>
+      <p class="muted" style="margin-top:0">
+        Revoking this app’s authorization is a <b>user ⇄ IdP</b> action — this RP cannot revoke on your
+        behalf, and the broker is not involved. The button below hands you over to the IdP, where you
+        confirm the RP’s identity <b>D</b> inside the trusted TCA and then revoke the session pseudonym
+        <span class="mono">acid</span> (paper Table 1, <i>Authorization revoke</i>).
+      </p>
+      <div class="row">
+        <a class="btn" href="/ssso/userinfo">🚫 Manage / revoke at the IdP</a>
+        <span class="muted">opens the IdP’s authorized-clients page</span>
+      </div>
+      <div class="note">Revoking deletes the IdP-side authorization record for this <span class="mono">acid</span>.
+        Because <span class="mono">acid</span> is a per-session pseudonym, the IdP still cannot tell which RP
+        it belongs to — only you can, after decrypting <b>D</b> in the TCA.</div>
+    </div>
+
+    <div class="foot">OrionLink — Single Sign-On with Oblivious Identity Brokers · demo</div>
+  </div>
+
+  <script>
+    // Decodes a base64url segment.
+    function b64urlDecode(s) {
+      try {
+        s = s.replace(/-/g, '+').replace(/_/g, '/');
+        while (s.length % 4) s += '=';
+        return decodeURIComponent(escape(atob(s)));
+      } catch (e) { return null; }
+    }
+    // Renders the access token's claims, showing that the identity fields are
+    // ciphertext.
+    (function showClaims() {
+      const raw = document.getElementById('tokenBox').textContent.trim();
+      const el = document.getElementById('claims');
+      const parts = raw.split('.');
+      if (parts.length < 2) { el.textContent = '(no token)'; return; }
+      const payload = b64urlDecode(parts[1]);
+      if (!payload) { el.textContent = '(could not decode)'; return; }
+      try { el.textContent = JSON.stringify(JSON.parse(payload), null, 2); }
+      catch (e) { el.textContent = payload; }
+    })();
+
+    let count = 0;
+    const btn = document.getElementById('refreshBtn');
+
+    // Requests a fresh access token through the broker and displays it.
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const msg = document.getElementById('refreshMsg');
+      msg.textContent = 'Requesting a fresh token via the broker…';
+      try {
+        const res = await fetch('/ssso/refresh', { credentials: 'include' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        count += 1;
+        document.getElementById('rcount').textContent = count;
+        const box = document.getElementById('refreshBox');
+        box.style.display = 'block';
+        box.textContent = data.access_token || '(empty)';
+        document.getElementById('refreshNote').style.display = 'block';
+        msg.textContent = '✓ Renewed (' + new Date().toLocaleTimeString() + ')';
+      } catch (e) {
+        msg.textContent = '✗ ' + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

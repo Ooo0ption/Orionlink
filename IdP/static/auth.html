@@ -1,0 +1,299 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>Authorize · OrionLink IdP</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <!-- Deployment addresses (window.ORION); served by this role, not compiled in. -->
+        <script src="/ssso/pubconfig.js"></script>
+        <!-- Consent screen. The IdP holds only the session pseudonym acid, so the
+             RP identity check is delegated to the TCA frame on its own origin. -->
+        <style>
+            :root {
+                --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0;
+                --brand:#10b981; --brand-soft:#ecfdf5; --ok:#16a34a; --bad:#dc2626;
+                --warn:#b45309; --warn-soft:#fffbeb; --broker:#f59e0b;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root { --bg:#0b1020; --card:#121a2e; --text:#e6ebf5; --muted:#93a1b8; --border:#24304a;
+                    --brand:#34d399; --brand-soft:#10231a; --ok:#4ade80; --warn:#fbbf24; --warn-soft:#241c07; }
+            }
+            * { box-sizing: border-box; }
+            body { margin:0; background:var(--bg); color:var(--text); line-height:1.5;
+                font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+            .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+                border-bottom:1px solid var(--border); background:var(--card); font-weight:800; }
+            .topbar .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+                box-shadow:0 0 0 4px var(--brand-soft); }
+            .topbar small { font-weight:600; color:var(--muted); }
+            .container { max-width:600px; margin:0 auto; padding:34px 20px 56px; }
+            .box { background:var(--card); border:1px solid var(--border); border-radius:16px;
+                padding:26px 24px; box-shadow:0 1px 2px rgba(2,6,23,.04); }
+            .logo { width:52px; height:52px; margin:0 auto 12px; border-radius:14px; background:var(--brand-soft);
+                display:grid; place-items:center; font-size:26px; }
+            h2 { margin:0 0 4px; font-size:20px; font-weight:800; text-align:center; }
+            .sub { margin:0 0 20px; text-align:center; color:var(--muted); font-size:13.5px; }
+            .req { border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:16px; }
+            .req .rl { font-size:11.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+                color:var(--muted); }
+            .req .v { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-weight:600;
+                font-size:12.5px; word-break:break-all; }
+            .req .scopes { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+            .verify { display:flex; align-items:center; gap:9px; padding:11px 13px; border-radius:10px;
+                background:var(--brand-soft); font-size:13px; font-weight:700; margin-bottom:8px; }
+            .tca-h { display:flex; align-items:baseline; gap:8px; margin:18px 0 6px; }
+            .tca-h .t { font-weight:800; font-size:14px; }
+            .tca-h .n { font-size:12px; color:var(--muted); }
+            #iframe_container iframe { width:100%; height:430px; border:1px solid var(--border);
+                border-radius:12px; background:var(--card); }
+            .note { margin-top:14px; font-size:12px; color:var(--muted); }
+            #log { display:none; }
+        </style>
+    </head>
+    <body>
+        <div class="topbar"><span class="dot"></span> OrionLink <small>· Identity Provider</small></div>
+
+        <div class="container">
+            <div class="box">
+                <div class="logo">🔐</div>
+                <h2>Authorize this application</h2>
+                <p class="sub">An application is requesting access to your account.</p>
+
+                <div class="req">
+                    <div class="rl">Requesting application</div>
+                    <div class="v" id="client_name">-</div>
+                    <div class="note" style="margin-top:6px">
+                        We only see a one-time pseudonym for this app — not its name. The TCA below
+                        checks that the pseudonym really belongs to the app you came from.
+                    </div>
+                    <div class="scopes">
+                        <div class="rl">Will be able to access</div>
+                        <div class="v" id="scope">-</div>
+                    </div>
+                </div>
+
+                <div class="verify">
+                    <span id="verify_status">Verifying…</span>
+                </div>
+
+                <div class="tca-h">
+                    <span class="t">Confirm in the TCA</span>
+                    <span class="n">separate origin · your PIN never leaves it</span>
+                </div>
+                <div id="iframe_container"></div>
+
+                <div class="note">
+                    Entering your PIN below grants the request. Nothing is released to the application
+                    until it succeeds, and the broker carrying this login sees only ciphertext.
+                </div>
+            </div>
+            <pre id="log"></pre>
+        </div>
+
+        <script>
+            // Appends a line to the on-page log and the console.
+            function log(msg){
+                try { console.log('[auth]', msg); } catch (e) {}
+                const el=document.getElementById('log');
+                if (el) el.textContent+="\n"+msg;
+            }
+            // Reads one cookie by name, or null when it is absent.
+            function getCookie(name) {
+                const cookies = document.cookie ? document.cookie.split('; ') : [];
+                for (let i = 0; i < cookies.length; i++) {
+                    const parts = cookies[i].split('=');
+                    const key = parts.shift();
+                    const val = parts.join('=');
+                    if (key === name) return decodeURIComponent(val);
+                }
+                return null;
+            }
+            // GETs a URL with the session cookie, aborting after ms milliseconds.
+            async function getWithTimeout(url, ms = 5000) {
+                const ac = new AbortController();
+                const timer = setTimeout(() => ac.abort(), ms);
+                try {
+                    const res = await fetch(url, { signal: ac.signal, credentials: 'include' });
+                    clearTimeout(timer);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return await res.text();
+                } catch (e) {
+                    if (e.name === 'AbortError') throw new Error('timeout');
+                    throw e;
+                }
+            }
+
+            const uid = getCookie('uid');
+            const acid = getCookie('acid');
+            const scope = getCookie('scope');
+            document.getElementById('client_name').textContent = acid ? (acid.length > 40 ? acid.slice(0, 40) + '…' : acid) : '-';
+            document.getElementById('scope').textContent = scope || '-';
+            log('uid='+uid);
+            log('acid='+acid);
+            log('scope='+scope);
+
+            const dvfURL = window.ORION.tcaOrigin + '/dvf.html';
+            const tcaOrigin = window.ORION.tcaOrigin;
+            const idpURL = window.ORION.idpOrigin + '/ssso';
+
+            const container = document.getElementById('iframe_container');
+            const verifyStatusEl = document.getElementById('verify_status');
+            const pinInputDiv = document.getElementById('pin_input_div');
+            let currentIframe = null;
+            let verifyResult = null;
+
+            // Replaces the TCA frame with a fresh one loading the given page.
+            function createIframe(src){
+                if(currentIframe){ container.removeChild(currentIframe); currentIframe=null; }
+                const iframe = document.createElement('iframe');
+                iframe.src = src;
+                iframe.style.width = '100%';
+                iframe.style.height = '420px';
+                iframe.style.border = '1px solid #666';
+                // allow-same-origin keeps the frame on the TCA's own origin, which
+                // the pinned-targetOrigin handshake needs; the two origins still
+                // differ, so the IdP page cannot read the frame's DOM.
+                iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin');
+                iframe.setAttribute('title','remote-document-iframe');
+                container.appendChild(iframe);
+                currentIframe = iframe;
+                log('iframe created for '+src);
+                return iframe;
+            }
+
+            let cvk;
+            const vksPromise = fetch(idpURL+'/pubkeys')
+                .then(res=> {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    cvk = data.vk1;
+                })
+                .catch(err=> {
+                    log('Error fetching public keys: '+err);
+                });
+            
+            let startTime = null;
+            
+            // Loads the TCA frame and sends it the credential to verify.
+            async function startDVFVerification() {
+                const iframe = createIframe(dvfURL);
+                log('DVF iframe created, waiting for it to load...');
+                verifyStatusEl.textContent = 'Loading TCA…';
+
+                iframe.onload = async () => {
+                    log('DVF iframe content has loaded.');
+                    await vksPromise;
+                    log('Public keys fetched, sending init message to iframe.');
+                    startTime = Date.now();
+                    verifyStatusEl.textContent = 'Verifying PS signature...';
+                    currentIframe.contentWindow.postMessage({type:'init', acid:acid, cvk:cvk}, tcaOrigin);
+                };
+            }
+            
+            startDVFVerification();
+
+            // Relays the TCA frame's requests to the IdP: alpha for the OPRF
+            // evaluation, D_enc for the authorization code, and reports the
+            // verification outcome to the user.
+            window.addEventListener('message', async (ev)=>{
+                if (!ev.data || !ev.data.type) {
+                    return;
+                }
+
+                switch (ev.data.type) {
+                case 'rp_domain':
+                    if (ev.data.rp_domain) {
+                        document.getElementById('rp_domain_str').textContent = atob(ev.data.rp_domain);
+                        document.getElementById('rp_domain').textContent = ev.data.rp_domain;
+                    }
+                    break;
+                case 'verify':
+                    log('DVF verification '+ev.data.value+' in iframe');
+                    verifyResult = ev.data.value;
+                    if (ev.data.value==='ok'){
+                        verifyStatusEl.textContent = '✓ Verified in the TCA — acid commits to the RP’s D';
+                        verifyStatusEl.style.color = 'green';
+                        currentIframe.contentWindow.postMessage({type:'uid', uid:uid}, tcaOrigin)
+                        if (pinInputDiv) {
+                            pinInputDiv.style.display = 'block';
+                        }
+                    } else {
+                        verifyStatusEl.textContent = '✗ Verification failed';
+                        verifyStatusEl.style.color = 'red';
+                    }
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    console.log(`Time taken from DVF load to acid verification complete: ${duration} ms`);
+                    break;
+                case 'alpha':
+                    log('Received alpha message from iframe: '+ev.data.alpha);
+                    const alpha_param = new URLSearchParams({ alpha: ev.data.alpha });
+                    const beta = await getWithTimeout(idpURL+'/authorize/beta?'+alpha_param.toString(), 5000)
+                        .then(text=>{
+                            log('Received beta from IdP: '+text);
+                            return text;
+                        })
+                        .catch(err=>{
+                            log('Error getting beta from IdP: '+err);
+                        });
+                    currentIframe.contentWindow.postMessage({type:'beta', beta:beta}, tcaOrigin);
+                    break;
+                case 'key':
+                    log('Received key message from iframe: D_enc='+ev.data.D_enc);
+                    const d_enc_param = new URLSearchParams({ D_enc: ev.data.D_enc });
+                    const code = await getWithTimeout(idpURL+'/authorize/code?'+d_enc_param.toString(), 5000)
+                        .then(text=>{
+                            log('Received code from IdP: '+text);
+                            return text;
+                        })
+                        .catch(err=>{
+                            log('Error getting code from IdP: '+err);
+                        });
+                    currentIframe.contentWindow.postMessage({type:'code', code:code}, tcaOrigin);
+                    break;
+                case 'authorization_completed':
+                    log('Authorization completed: '+ev.data.message);
+                    const noticeDiv = document.createElement('div');
+                    noticeDiv.style.cssText = 'margin:12px 0;padding:10px;background:#d4edda;color:#155724;border:1px solid #28a745;border-radius:6px;font-weight:700;';
+                    noticeDiv.textContent = ev.data.message || 'Authorization completed.';
+                    const containerEl = document.querySelector('.container') || document.body;
+                    containerEl.insertBefore(noticeDiv, containerEl.firstChild);
+                    // Keep the TCA timeline available until the brokered code
+                    // exchange finishes at the paper's highest RTT setting.
+                    // The browser context still closes the popup after each
+                    // benchmark iteration, so this grace period is not timed.
+                    setTimeout(() => {
+                        if (window.opener) {
+                            window.close();
+                        } else {
+                            log('Window cannot be closed (not a popup)');
+                        }
+                    }, 15000);
+                    break;
+                }
+            });
+            
+            const submitPinBtn = document.getElementById('submit_pin_btn');
+            if (submitPinBtn) {
+                submitPinBtn.addEventListener('click', () => {
+                    const pinInput = document.getElementById('pin_input');
+                    if (!pinInput) {
+                        log('PIN input not found');
+                        return;
+                    }
+                    const pin = pinInput.value;
+                    if (!pin) {
+                        log('PIN is empty');
+                        return;
+                    }
+                    log('PIN submitted: ' + pin);
+                    if (currentIframe && currentIframe.contentWindow) {
+                        currentIframe.contentWindow.postMessage({type:'pin', pin:pin}, tcaOrigin);
+                    }
+                });
+            }
+        </script>
+    </body>
+</html>

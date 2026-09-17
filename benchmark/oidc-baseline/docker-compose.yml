@@ -1,0 +1,55 @@
+name: secure-sso-oidc
+
+x-oidc-service: &oidc-service
+  image: ${OIDC_IMAGE:-secure-sso-oidc:local}
+  build:
+    context: .
+    dockerfile: Dockerfile
+  init: true
+  restart: unless-stopped
+  # Required only when tc/netem is used for the network-delay experiment.
+  cap_add:
+    - NET_ADMIN
+
+services:
+  idp:
+    <<: *oidc-service
+    command: ["-name=idp"]
+    ports:
+      - "127.0.0.1:14930:14930"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:14930/oauth2/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  broker:
+    <<: *oidc-service
+    command: ["-name=broker", "-register"]
+    ports:
+      - "127.0.0.1:14931:14931"
+    depends_on:
+      idp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:14931/oauth2/.well-known/openid-configuration"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  rp:
+    <<: *oidc-service
+    command: ["-name=rp", "-register"]
+    ports:
+      - "127.0.0.1:14932:14932"
+    depends_on:
+      broker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:14932/oauth2/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s

@@ -1,0 +1,40 @@
+Test #1 At: 2026-08-11 05:29:19
+  RegisterIdP Duration: 5ms
+  RegisterBroker Duration: 0ms
+
+Test #2 At: 2026-08-11 05:29:19
+  RegisterIdP Duration: 0ms
+  RegisterBroker Duration: 1ms
+
+Test #3 At: 2026-08-11 05:29:19
+  RegisterIdP Duration: 1ms
+  RegisterBroker Duration: 2ms
+
+Test #4 At: 2026-08-11 05:29:19
+  RegisterIdP Duration: 1ms
+  RegisterBroker Duration: 1ms
+
+Test #5 At: 2026-08-11 05:29:19
+  RegisterIdP Duration: 0ms
+  RegisterBroker Duration: 1ms
+
+Test #6 At: 2026-08-11 05:29:20
+  RegisterIdP Duration: 1ms
+  RegisterBroker Duration: 1ms
+
+Test #7 At: 2026-08-11 05:29:20
+  RegisterIdP Duration: 1ms
+  RegisterBroker Duration: 1ms
+
+Test #8 At: 2026-08-11 05:29:20
+  RegisterIdP Duration: 1ms
+  RegisterBroker Duration: 1ms
+
+Test #9 At: 2026-08-11 05:29:20
+  RegisterIdP Duration: 1ms
+  RegisterBroker Duration: 1ms
+
+Test #10 At: 2026-08-11 05:29:20
+  RegisterIdP Duration: 0ms
+  RegisterBroker Duration: 1ms
+

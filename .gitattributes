@@ -1,0 +1,4 @@
+# Shell and PowerShell scripts must remain LF-terminated on every platform.
+# This overrides core.autocrlf on Windows and prevents /bin/sh from seeing ^M.
+*.sh text eol=lf
+*.ps1 text eol=lf

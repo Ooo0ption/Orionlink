@@ -1,0 +1,50 @@
+// Generated at container start by tca/docker-entrypoint.d/40-orion-config.sh
+// (envsubst over this template). Do not edit the generated /orion-config.js —
+// edit this template.
+//
+// Why this file exists: the TCA is deliberately served from a static nginx
+// origin that is separate from the IdP (paper §3 / revision-plan §3), so there
+// is no server-side templating available to inject deployment addresses. Before
+// this, dvf.js and dvf_authorize.js carried compiled-in http://localhost:3000
+// and :3001 literals, which the NDSS "Artifacts Functional" criteria rule out
+// ("no hardcoded paths, addresses, or identifiers").
+//
+// This is the ONLY TCA script without an SRI `integrity` attribute, because its
+// contents legitimately vary per deployment. That is safe: it carries public
+// routing information only — never keys, never PII — and the scripts that
+// handle secrets (cryptolib.js, dvf.js, dvf_authorize.js) remain hash-pinned.
+(function () {
+    var raw = {
+        profile: "${ORION_PROFILE}",
+        idp: "${ORION_IDP_URL}",
+        broker: "${ORION_BROKER_URL}",
+        rp: "${ORION_RP_URL}",
+        tca: "${ORION_TCA_URL}"
+    };
+
+    function originOf(u) {
+        try { return new URL(u).origin; } catch (e) { return null; }
+    }
+
+    // Browsers treat http://localhost:3000 and http://127.0.0.1:3000 as distinct
+    // origins, and the local stack is routinely reached by either name, so an
+    // inbound allow-list has to contain both or cross-window messaging silently
+    // drops. Outbound postMessage still targets the single canonical origin.
+    function aliases(u) {
+        var o = originOf(u);
+        if (!o) { return []; }
+        if (o.indexOf('//localhost') !== -1) { return [o, o.replace('//localhost', '//127.0.0.1')]; }
+        if (o.indexOf('//127.0.0.1') !== -1) { return [o, o.replace('//127.0.0.1', '//localhost')]; }
+        return [o];
+    }
+
+    window.ORION = {
+        profile: raw.profile,
+        idpOrigin: originOf(raw.idp),
+        brokerOrigin: originOf(raw.broker),
+        rpOrigin: originOf(raw.rp),
+        tcaOrigin: originOf(raw.tca),
+        // Inbound: who may postMessage into this frame.
+        allowedParentOrigins: aliases(raw.idp).concat(aliases(raw.broker))
+    };
+})();

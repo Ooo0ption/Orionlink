@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Continue · Brokered OIDC Broker</title>
+    <style>
+        :root { --bg:#f6f7fb; --card:#fff; --ink:#0f172a; --muted:#64748b;
+            --line:#e2e8f0; --brand:#f59e0b; --brand-soft:#fffbeb; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0b1020; --card:#121a2e; --ink:#e6ebf5; --muted:#93a1b8;
+                --line:#24304a; --brand:#fbbf24; --brand-soft:#241c07; }
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); line-height:1.5;
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+        .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+            border-bottom:1px solid var(--line); background:var(--card); font-weight:800; }
+        .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+            box-shadow:0 0 0 4px var(--brand-soft); }
+        .topbar small { color:var(--muted); font-weight:600; }
+        .page { max-width:430px; margin:0 auto; padding:46px 20px 60px; }
+        .card { padding:30px 28px; text-align:center; background:var(--card);
+            border:1px solid var(--line); border-radius:16px; box-shadow:0 1px 2px rgba(2,6,23,.04); }
+        .role { width:48px; height:48px; margin:0 auto 13px; border-radius:14px;
+            display:grid; place-items:center; color:var(--brand); background:var(--brand-soft);
+            font-size:20px; font-weight:800; }
+        h1 { margin:0 0 5px; font-size:21px; }
+        p { margin:0 0 20px; color:var(--muted); font-size:14px; }
+        .login-btn { display:inline-block; width:100%; padding:12px 18px; color:#fff;
+            background:var(--brand); border-radius:10px; text-decoration:none; font-weight:700; }
+        .note { margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
+            color:var(--muted); font-size:12.5px; }
+    </style>
+</head>
+<body>
+    <div class="topbar"><span class="dot"></span>Brokered OIDC <small>· Identity Broker</small></div>
+    <main class="page">
+      <section class="card">
+        <div class="role">B</div>
+        <h1>Continue to the IdP</h1>
+        <p>The broker is forwarding this sign-in request to the identity provider.</p>
+        <a id="idpLogin" href="{{ .IdPAuthURL }}" class="login-btn">Continue with IdP</a>
+        <div class="note">You will return to the relying party after authentication.</div>
+      </section>
+    </main>
+    <script>
+        // For E2E latency testing: enrich IdPAuthURL with frontend timing markers.
+        const link = document.getElementById("idpLogin");
+        const now = Date.now();
+        try {
+            const u = new URL(link.href, window.location.origin);
+            // broker page load time
+            u.searchParams.set("t_broker_load", String(now));
+            link.href = u.toString();
+        } catch (_) {}
+
+        link.addEventListener("click", function() {
+            const clickAt = Date.now();
+            try {
+                const u = new URL(link.href, window.location.origin);
+                u.searchParams.set("t_broker_click", String(clickAt));
+                link.href = u.toString();
+            } catch (_) {}
+        });
+    </script>
+</body>
+</html>

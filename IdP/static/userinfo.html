@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OrionLink IdP · Your account</title>
+    <!-- Deployment addresses (window.ORION); served by this role, not compiled in. -->
+    <script src="/ssso/pubconfig.js"></script>
+    <style>
+        :root {
+            --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0;
+            --brand:#10b981; --brand-soft:#ecfdf5; --bad:#dc2626; --bad-soft:#fef2f2;
+            --code-bg:#0b1220; --code-ink:#c7d2fe;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg:#0b1020; --card:#121a2e; --text:#e6ebf5; --muted:#93a1b8; --border:#24304a;
+                --brand:#34d399; --brand-soft:#10231a; --bad:#f87171; --bad-soft:#2a1414; }
+        }
+        * { box-sizing:border-box; }
+        body { margin:0; background:var(--bg); color:var(--text); line-height:1.55;
+            font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+        .topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+            border-bottom:1px solid var(--border); background:var(--card); font-weight:800; }
+        .topbar .dot { width:12px; height:12px; border-radius:50%; background:var(--brand);
+            box-shadow:0 0 0 4px var(--brand-soft); }
+        .topbar small { font-weight:600; color:var(--muted); }
+        .wrap { max-width:940px; margin:0 auto; padding:24px 20px 64px; }
+        .card { background:var(--card); border:1px solid var(--border); border-radius:16px;
+            padding:20px 22px; margin-bottom:16px; }
+        h2 { margin:0 0 4px; font-size:15px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+        h1 { margin:0 0 14px; font-size:22px; }
+        .muted { color:var(--muted); font-size:13.5px; }
+        .mono { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+
+        .kv { display:flex; gap:14px; padding:8px 0; border-bottom:1px dashed var(--border); font-size:14px; }
+        .kv:last-child { border-bottom:0; }
+        .kv .k { width:110px; flex:none; color:var(--muted); }
+        .kv .v { font-weight:600; word-break:break-all; }
+
+        .auth { border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-top:12px; }
+        .auth + .auth { margin-top:10px; }
+        .auth .head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+        .chip { display:inline-block; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px;
+            background:var(--brand-soft); color:var(--brand); margin-right:6px; }
+        .field { margin-top:10px; font-size:12px; }
+        .field .fk { color:var(--muted); margin-bottom:3px; }
+        .field .fv { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:11.5px;
+            background:var(--code-bg); color:var(--code-ink); border-radius:8px; padding:8px 10px;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+        .field .fv.open { white-space:normal; word-break:break-all; }
+        .btns { display:flex; gap:8px; }
+        button { font:inherit; font-size:13px; font-weight:700; cursor:pointer; padding:8px 14px;
+            border-radius:9px; border:1px solid var(--border); background:var(--card); color:var(--text); }
+        button:hover { border-color:var(--brand); }
+        button.danger { color:var(--bad); background:var(--bad-soft); border-color:transparent; }
+        button.danger:hover { border-color:var(--bad); }
+
+        /* TCA modal: a dialog owning the one TCA iframe. */
+        .modal { position:fixed; inset:0; z-index:50; display:none; padding:24px;
+            background:rgba(2,6,23,.55); overflow:auto; }
+        .modal.show { display:grid; place-items:start center; }
+        .modal-card { background:var(--card); border:1px solid var(--border); border-radius:16px;
+            padding:20px 22px; width:min(600px, 100%); box-shadow:0 20px 60px rgba(2,6,23,.35); }
+        .modal-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+        .tca-h .t { font-weight:800; font-size:15px; }
+        .tca-h .n { font-size:12px; color:var(--muted); }
+        .icon { border:0; background:transparent; font-size:16px; line-height:1; padding:4px 8px; color:var(--muted); }
+        .icon:hover { color:var(--text); }
+        #iframe_container { margin-top:12px; }
+        #iframe_container iframe { width:100%; height:430px; border:1px solid var(--border);
+            border-radius:12px; background:var(--card); }
+        .note { font-size:12.5px; color:var(--muted); margin-top:10px; }
+        .status { font-size:13px; color:var(--muted); margin-top:8px; min-height:19px; }
+        .empty { color:var(--muted); font-size:14px; margin-top:10px; }
+    </style>
+</head>
+
+<body>
+    <div class="topbar"><span class="dot"></span>OrionLink IdP <small>· your account</small></div>
+
+    <div class="wrap">
+        <div class="card">
+            <h1>Hello, {{ .Username }}</h1>
+            <div class="kv"><span class="k">Username</span><span class="v">{{ .Username }}</span></div>
+            <div class="kv"><span class="k">Email</span><span class="v">{{ .Email }}</span></div>
+            <div class="kv"><span class="k">UID</span><span class="v mono" id="uid">{{ .UID }}</span></div>
+        </div>
+
+        <div class="card">
+            <h2>Authorized clients</h2>
+            <div class="muted">One record per authorization. The IdP stores them under the session pseudonym
+                <span class="mono">acid</span> and cannot tell which app any of them belongs to —
+                <b>Decrypt</b> reveals that inside the TCA, on your device only.</div>
+
+            {{ if .Authorized }}
+            {{ range .Authorized }}
+            <div class="auth">
+                <div class="head">
+                    <div class="scopes">{{ .Scope }}</div>
+                    <div class="btns">
+                        <button class="view-btn" data-acid="{{ .ACID }}" data-denc="{{ .DEnc }}">🔎 Decrypt</button>
+                        <button class="delete-btn danger" data-acid="{{ .ACID }}">Revoke</button>
+                    </div>
+                </div>
+                <div class="field"><div class="fk">acid (session pseudonym)</div><div class="fv">{{ .ACID }}</div></div>
+                <div class="field"><div class="fk">D_enc (encrypted app identity)</div><div class="fv">{{ .DEnc }}</div></div>
+            </div>
+            {{ end }}
+            {{ else }}
+            <div class="empty">No authorized clients yet — sign in to an app first.</div>
+            {{ end }}
+            <div class="status" id="status"></div>
+        </div>
+
+    </div>
+
+    <div class="modal" id="tca_modal" role="dialog" aria-modal="true" aria-labelledby="tca_title">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div class="tca-h">
+                    <div class="t" id="tca_title">Confirm in the TCA</div>
+                    <div class="n">separate origin · your PIN never leaves it</div>
+                </div>
+                <button class="icon" id="tca_close" type="button" aria-label="Close">✕</button>
+            </div>
+            <div id="iframe_container"></div>
+            <div class="note">The app identity <b>D</b> is decrypted inside this frame, which runs on the
+                TCA's own origin — the IdP page around it never receives the plaintext.</div>
+        </div>
+    </div>
+
+    <script>
+        const idpURL = window.ORION.idpOrigin + '/ssso';
+        const dvfAuthURL = window.ORION.tcaOrigin + '/dvf_authorize.html';
+        const tcaOrigin = window.ORION.tcaOrigin;
+        const TCA_ORIGINS = new Set(window.ORION.allowedOrigins.filter(function (o) {
+            return o === tcaOrigin
+                || o === tcaOrigin.replace('//localhost', '//127.0.0.1')
+                || o === tcaOrigin.replace('//127.0.0.1', '//localhost');
+        }));
+        // Reports whether a message came from the TCA origin.
+        function isTcaOrigin(o) { return TCA_ORIGINS.has(o); }
+
+        const container = document.getElementById('iframe_container');
+        const tcaModal = document.getElementById('tca_modal');
+        const statusEl = document.getElementById('status');
+        let currentIframe = null;
+        let dvfReady = false;
+        let pendingDecrypt = null;
+
+        // Writes a line to the console.
+        function log(msg){ console.log('[userinfo]', msg); }
+
+        // Shows a short status message to the user.
+        function status(msg){ statusEl.textContent = msg; }
+
+        // Fetches a response body, aborting once the timeout elapses.
+        async function getWithTimeout(url, ms = 5000) {
+            const ac = new AbortController();
+            const timer = setTimeout(() => ac.abort(), ms);
+            try {
+                const res = await fetch(url, { signal: ac.signal, credentials: 'include' });
+                clearTimeout(timer);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return await res.text();
+            } catch (e) {
+                if (e.name === 'AbortError') throw new Error('timeout');
+                throw e;
+            }
+        }
+
+        // Builds a fresh TCA frame for the dialog, discarding any previous one and
+        // the record it still holds.
+        function createIframe(src){
+            container.textContent = '';
+            const iframe = document.createElement('iframe');
+            iframe.src = src;
+            // allow-same-origin keeps the frame on the TCA's own origin, which
+            // the pinned-targetOrigin handshake needs; the two origins still
+            // differ, so this page cannot read the frame's DOM.
+            iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-same-origin');
+            iframe.setAttribute('title','remote-document-iframe');
+            container.appendChild(iframe);
+            currentIframe = iframe;
+            log('iframe created for ' + src);
+            return iframe;
+        }
+
+        // Opens the dialog on a stored record, holding it until the frame reports
+        // itself ready.
+        function openTca(denc){
+            dvfReady = false;
+            pendingDecrypt = denc;
+            createIframe(dvfAuthURL);
+            tcaModal.classList.add('show');
+            status('Enter your PIN in the Trusted Client Agent dialog.');
+        }
+
+        // Closes the dialog and tears the frame down.
+        function closeTca(){
+            tcaModal.classList.remove('show');
+            container.textContent = '';
+            currentIframe = null;
+            dvfReady = false;
+            pendingDecrypt = null;
+            status('');
+        }
+
+        document.getElementById('tca_close').addEventListener('click', closeTca);
+        tcaModal.addEventListener('click', (e) => { if (e.target === tcaModal) closeTca(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && tcaModal.classList.contains('show')) closeTca();
+        });
+
+        // Renders the space-separated scope string as one chip per scope.
+        document.querySelectorAll('.scopes').forEach(function (el) {
+            const scopes = el.textContent.trim().split(/\s+/).filter(Boolean);
+            el.textContent = '';
+            scopes.forEach(function (s) {
+                const chip = document.createElement('span');
+                chip.className = 'chip';
+                chip.textContent = s;
+                el.appendChild(chip);
+            });
+        });
+
+        // Hands the stored record and the user's uid to the TCA frame to decrypt.
+        function sendDecrypt(denc){
+            const uid = document.getElementById('uid').textContent;
+            currentIframe.contentWindow.postMessage({ type:'decrypt', denc: denc, uid: uid }, tcaOrigin);
+        }
+
+        // Handles the per-record actions: view opens the TCA dialog, delete revokes
+        // the authorization.
+        document.addEventListener('click', async (e) => {
+            const view = e.target.closest('.view-btn');
+            if (view) {
+                openTca(view.getAttribute('data-denc'));
+                return;
+            }
+
+            const del = e.target.closest('.delete-btn');
+            if (del) {
+                const acid = del.getAttribute('data-acid');
+                if(!confirm('Revoke this authorization?')) return;
+                const row = del.closest('.auth');
+                fetch(idpURL + '/userinfo/authorized/' + encodeURIComponent(acid), { method: 'DELETE', credentials: 'include' }).then(r => {
+                    if(r.status === 204){
+                        if(row) row.parentNode.removeChild(row);
+                        status('Authorization revoked.');
+                    } else {
+                        status('Failed to revoke (HTTP ' + r.status + ').');
+                    }
+                }).catch(err => status('Failed to revoke: ' + err));
+            }
+        });
+
+        // Expands a truncated value in place.
+        document.addEventListener('click', (e) => {
+            const fv = e.target.closest('.fv');
+            if (fv) fv.classList.toggle('open');
+        });
+
+        // Serves the TCA frame: hands over the pending record once it is ready and
+        // relays its OPRF request to the IdP. The plaintext stays in the frame.
+        window.addEventListener('message', async (ev)=>{
+            if (!ev.data || !ev.data.type) return;
+            if (!isTcaOrigin(ev.origin)) {
+                log('ignoring ' + ev.data.type + ' from non-TCA origin: ' + ev.origin);
+                return;
+            }
+
+            switch (ev.data.type) {
+            case 'dvf_ready':
+                dvfReady = true;
+                log('TCA frame ready');
+                if (pendingDecrypt !== null) {
+                    const denc = pendingDecrypt;
+                    pendingDecrypt = null;
+                    sendDecrypt(denc);
+                }
+                break;
+            case 'alpha': {
+                log('received alpha from TCA');
+                const alpha_param = new URLSearchParams({ alpha: ev.data.alpha });
+                let beta = null;
+                try {
+                    beta = await getWithTimeout(idpURL + '/authorize/beta?' + alpha_param.toString(), 5000);
+                } catch (err) {
+                    status('Could not reach the IdP for the OPRF step: ' + err);
+                    return;
+                }
+                if (!beta || typeof beta !== 'string') {
+                    status('The IdP returned an empty OPRF response.');
+                    return;
+                }
+                if (!currentIframe) return;
+                currentIframe.contentWindow.postMessage({ type:'beta', beta: beta }, tcaOrigin);
+                break;
+            }
+            case 'decryption_done':
+                status('Decryption finished — the app identity is shown in the dialog.');
+                break;
+            }
+        });
+    </script>
+
+</body>
+
+</html>

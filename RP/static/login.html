@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OrionLink · Sign in</title>
+  <link rel="stylesheet" href="/static/orion.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> OrionLink <small>· Relying Party (App)</small></div>
+    <div class="nav">
+      <a href="/ssso/">Home</a>
+      <a href="/ssso/register">Register RP</a>
+      <a href="/ssso/login" class="active">Sign in</a>
+    </div>
+  </div>
+
+  <!-- A conventional application sign-in box, as a user of an OrionLink-enabled
+       app sees it. -->
+  <div class="authpage">
+    <div class="authbox">
+      <div class="applogo">🖥️</div>
+      <h1>Sign in to Demo App</h1>
+      <p class="muted sub">Continue with your OrionLink identity provider.</p>
+
+      <button id="loginBtn" class="btn lg block">
+        <span class="glyph">🔐</span> Sign in with OrionLink
+      </button>
+
+      <div class="hint">
+        Demo account — <b>Alice</b> / <span class="mono">Alice-pass</span>, then any PIN.
+      </div>
+
+      <div class="privacy">
+        <div class="ph">🕶️ The broker never learns who you are</div>
+        Your login is routed through an oblivious broker. It sees only per-session pseudonyms
+        (<span class="mono">acid</span>, <span class="mono">auid</span>) and ciphertext — never your
+        username, never your email, and nothing it could use to link this login to your logins at any
+        other app. Your personal data is encrypted end-to-end between the identity provider and this
+        app.
+      </div>
+
+      <p class="authfoot">
+        You will be sent to your identity provider to sign in, then asked to confirm this app inside
+        the TCA before anything is released.
+      </p>
+    </div>
+
+    <div class="foot">OrionLink — Single Sign-On with Oblivious Identity Brokers · demo</div>
+  </div>
+
+  <script>
+    document.getElementById('loginBtn').addEventListener('click', function () {
+      const startTime = Date.now();
+      window.location = '/ssso/login/start?startTime=' + encodeURIComponent(startTime.toString());
+    });
+  </script>
+</body>
+</html>

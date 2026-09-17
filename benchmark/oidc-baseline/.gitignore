@@ -1,0 +1,51 @@
+# Go: common ignores for binaries, build outputs and tooling
+
+# Binaries and build artifacts
+/bin/
+/build/
+/out/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+
+# Test, coverage and profiling
+*.test
+coverage.out
+*.coverprofile
+*.prof
+
+# Vendor (remove if you vendor dependencies intentionally)
+vendor/
+Godeps/_workspace/
+
+# Go tool build cache and pkg (optional)
+pkg/
+*.exe~
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.rsuser
+*.swp
+*~
+e2e/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs, temp and secrets
+*.log
+tmp/
+.env
+.env.local
+
+# Reference File
+*.pdf

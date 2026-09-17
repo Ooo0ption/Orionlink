@@ -1,0 +1,26 @@
+{
+    "_comment": [
+        "Protocol paths only. These are part of the wire contract, defined in",
+        "internal/protocol and served by the /ssso/* handlers,",
+        "and are identical in every deployment, so they are tracked in git.",
+        "Service ADDRESSES (including the former Issuer / DockerIssuer pair) are NOT set",
+        "here — they come from the ORION_* environment variables and are applied by",
+        "RuntimeConfig.ApplyEnv at startup. Editing an address here would have no effect;",
+        "edit .env instead."
+    ],
+    "IdPConfig": {
+        "SecureSSOConfig": {
+            "AuthorizePath": "/ssso/authorize",
+            "TokenPath": "/ssso/token",
+            "UserInfoPath": "/ssso/userinfo",
+            "JWKSPath": "/ssso/.well-known/jwks.json",
+            "CallbackPath": "/ssso/callback",
+            "MacPath": "/ssso/token/opaque/mac",
+            "RefreshPath": "/ssso/refresh"
+        }
+    },
+    "RPConfig": {
+        "PoKPath": "/ssso/login/aake/pok",
+        "MacPath": "/ssso/login/aake/mac"
+    }
+}

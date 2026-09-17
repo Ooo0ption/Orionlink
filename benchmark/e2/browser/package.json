@@ -1,0 +1,16 @@
+{
+  "name": "orionlink-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-side latency harnesses for OrionLink paper Table 4. Requires the docker-compose stack (idp:3000, broker:3001, rp:3002, tca:3003) to be running.",
+  "scripts": {
+    "install-browsers": "playwright install chromium",
+    "perf": "playwright test --project=perf",
+    "perf:login": "playwright test --project=perf login_latency",
+    "perf:authz": "playwright test --project=perf authorization_mgmt",
+    "perf:refresh": "playwright test --project=perf token_refresh"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

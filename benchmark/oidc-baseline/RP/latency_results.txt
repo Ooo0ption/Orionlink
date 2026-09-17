@@ -1,0 +1,74 @@
+Test At: 2025-12-25 00:38:16 | T1(Login->IdP): 717ms | T2(Submit->UserView): 154ms | T3(Total): 872ms
+Test At: 2025-12-25 00:38:21 | T1(Login->IdP): 103ms | T2(Submit->UserView): 135ms | T3(Total): 238ms
+Test At: 2025-12-25 00:38:27 | T1(Login->IdP): 107ms | T2(Submit->UserView): 130ms | T3(Total): 237ms
+Test At: 2025-12-25 00:39:42 | T1(Login->IdP): 184ms | T2(Submit->UserView): 188ms | T3(Total): 372ms
+Test At: 2025-12-25 11:23:45 | T1(Login->IdP): 678ms | T2(Submit->UserView): 81ms | T3(Total): 760ms
+Test At: 2025-12-25 11:23:47 | T1(Login->IdP): 660ms | T2(Submit->UserView): 28ms | T3(Total): 689ms
+Test At: 2025-12-25 11:23:49 | T1(Login->IdP): 678ms | T2(Submit->UserView): 42ms | T3(Total): 720ms
+Test At: 2025-12-25 11:23:52 | T1(Login->IdP): 644ms | T2(Submit->UserView): 18ms | T3(Total): 662ms
+Test At: 2025-12-25 11:23:54 | T1(Login->IdP): 644ms | T2(Submit->UserView): 18ms | T3(Total): 662ms
+Test At: 2025-12-25 11:23:56 | T1(Login->IdP): 646ms | T2(Submit->UserView): 15ms | T3(Total): 662ms
+Test At: 2025-12-25 11:23:59 | T1(Login->IdP): 661ms | T2(Submit->UserView): 17ms | T3(Total): 678ms
+Test At: 2025-12-25 11:24:01 | T1(Login->IdP): 646ms | T2(Submit->UserView): 31ms | T3(Total): 679ms
+Test At: 2025-12-25 11:24:03 | T1(Login->IdP): 646ms | T2(Submit->UserView): 16ms | T3(Total): 662ms
+Test At: 2025-12-25 11:24:06 | T1(Login->IdP): 661ms | T2(Submit->UserView): 16ms | T3(Total): 677ms
+Test #1 At: 2025-12-27 22:55:17
+  T1(Login->IdP渲染): 660ms
+  T2(Submit->UserView): 76ms
+  T3(Total): 737ms
+
+Test #2 At: 2025-12-27 22:55:19
+  T1(Login->IdP渲染): 658ms
+  T2(Submit->UserView): 19ms
+  T3(Total): 677ms
+
+Test #3 At: 2025-12-27 22:55:22
+  T1(Login->IdP渲染): 669ms
+  T2(Submit->UserView): 68ms
+  T3(Total): 740ms
+
+Test #4 At: 2025-12-27 22:55:24
+  T1(Login->IdP渲染): 663ms
+  T2(Submit->UserView): 19ms
+  T3(Total): 682ms
+
+Test #5 At: 2025-12-27 22:55:27
+  T1(Login->IdP渲染): 644ms
+  T2(Submit->UserView): 37ms
+  T3(Total): 682ms
+
+Test #6 At: 2025-12-27 22:55:29
+  T1(Login->IdP渲染): 678ms
+  T2(Submit->UserView): 17ms
+  T3(Total): 695ms
+
+Test #7 At: 2025-12-27 22:55:31
+  T1(Login->IdP渲染): 660ms
+  T2(Submit->UserView): 18ms
+  T3(Total): 678ms
+
+Test #8 At: 2025-12-27 22:55:34
+  T1(Login->IdP渲染): 668ms
+  T2(Submit->UserView): 22ms
+  T3(Total): 691ms
+
+Test #9 At: 2025-12-27 22:55:36
+  T1(Login->IdP渲染): 659ms
+  T2(Submit->UserView): 17ms
+  T3(Total): 676ms
+
+Test #10 At: 2025-12-27 22:55:38
+  T1(Login->IdP渲染): 644ms
+  T2(Submit->UserView): 17ms
+  T3(Total): 661ms
+
+Test #11 At: 2025-12-27 22:56:15
+  T1(Login->IdP渲染): 676ms
+  T2(Submit->UserView): 67ms
+  T3(Total): 743ms
+
+Test #12 At: 2025-12-27 22:56:22
+  T1(Login->IdP渲染): 93ms
+  T2(Submit->UserView): 56ms
+  T3(Total): 149ms
+

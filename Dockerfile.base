@@ -1,0 +1,44 @@
+#
+# Project-specific Linux base for fully offline OrionLink image builds.
+# Build this once while online, then transfer it with `docker save`/`docker load`.
+ARG K6_IMAGE=grafana/k6:1.8.0@sha256:b992f241070f3f3a7d78096fa6020db1edcda49297ee8ed9eb0ab847ef3dcb32
+
+FROM ${K6_IMAGE} AS k6
+
+FROM golang:1.25.1-alpine3.21 AS go-toolchain
+
+FROM nginx:1.31.3-alpine
+
+# Copy the complete Go distribution into the nginx runtime base. The resulting
+# single image can both compile OrionLink and run all four AE roles.
+COPY --from=go-toolchain /usr/local/go /usr/local/go
+COPY --from=k6 /usr/bin/k6 /usr/local/bin/k6
+
+ENV PATH=/usr/local/go/bin:${PATH} \
+    GOPATH=/go \
+    GOMODCACHE=/go/pkg/mod \
+    GOTOOLCHAIN=local
+
+# Runtime dependencies plus git for the one-time online module download. Bash
+# runs the E3 wrapper. The final offline code build uses GOPROXY=off and never
+# invokes apk.
+RUN apk add --no-cache bash ca-certificates curl git iproute2
+
+WORKDIR /opt/orion-deps
+COPY go.mod go.sum ./
+
+# Populate and verify the exact module graph pinned by this repository. Any
+# later go.mod/go.sum change intentionally requires rebuilding this base image.
+RUN go env -w GOPROXY=https://proxy.golang.org,direct \
+    && go mod download \
+    && go mod verify
+
+# These defaults make accidental dependency/toolchain downloads fail fast in
+# every downstream build, even if the caller forgets `docker build --network=none`.
+ENV GOPROXY=off \
+    GOSUMDB=off \
+    GOTOOLCHAIN=local
+
+LABEL org.opencontainers.image.title="OrionLink offline AE Linux base" \
+      org.opencontainers.image.description="Go toolchain, pinned Go modules, k6 1.8.0, nginx, curl, and tc/netem for offline OrionLink builds" \
+      org.opencontainers.image.version="go1.25.1-k6-1.8.0"
