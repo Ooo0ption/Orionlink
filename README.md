@@ -1,6 +1,6 @@
 OrionLink
 ------
-OrionLink is a privacy-enhancing SSO pipeline for existing brokered SSO architectures that combines unlinkable per-RP pseudonyms with anonymous key exchange to prevent cross-service tracking and protect user data from broker visibility. The full version of our paper is available [here](https://github.com/Ooo0ption/Orionlink/blob/main/orionlink-full.pdf).
+OrionLink is a privacy-enhancing SSO pipeline for existing brokered SSO architectures that combines unlinkable per-RP pseudonyms with anonymous key exchange to prevent cross-service tracking and protect user data from broker visibility. The full version of our paper is available [here](https://github.com/Ooo0ption/Orionlink/blob/main/OrionLink%20-%20Single%20Sign-On%20with%20Oblivious%20Identity%20Brokers.pdf).
 
 # 1. Overview
 
